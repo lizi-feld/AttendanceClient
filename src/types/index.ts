@@ -6,11 +6,11 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  Token: string
-  TokenType: string
-  ExpiresAt: string
-  RefreshToken: string
-  Employee: EmployeeDto
+  token: string
+  tokenType: string
+  expiresAt: string
+  refreshToken: string
+  employee: EmployeeDto
 }
 
 export interface RefreshTokenRequestDto {

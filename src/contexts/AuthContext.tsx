@@ -55,17 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await authService.login(credentials)
 
       // Store tokens in memory (never localStorage)
-      tokenStore.accessToken = data.Token
-      tokenStore.refreshToken = data.RefreshToken
+      tokenStore.accessToken = data.token
+      tokenStore.refreshToken = data.refreshToken
 
       setUser({
-        employee: data.Employee,
-        accessToken: data.Token,
-        refreshToken: data.RefreshToken,
+        employee: data.employee,
+        accessToken: data.token,
+        refreshToken: data.refreshToken,
       })
 
       // Route based on role
-      if (data.Employee.Role === 'Admin') {
+      if (data.employee.Role === 'Admin') {
         navigate('/admin/dashboard', { replace: true })
       } else {
         navigate('/employee', { replace: true })
