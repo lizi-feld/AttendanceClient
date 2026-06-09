@@ -1,20 +1,249 @@
-import { useParams } from 'react-router-dom'
-import { UserCircle } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import {
+  ArrowRight,
+  CalendarDays,
+  Calendar,
+  Clock,
+  UserCircle,
+  AlertCircle,
+  History,
+} from 'lucide-react'
+import { adminService } from '../../services/adminService'
+import { FullPageSpinner } from '../../components/ui/Spinner'
+import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Pagination } from '../../components/ui/Pagination'
+import {
+  formatDateFromServer,
+  formatTimeFromServer,
+  displayDuration,
+  computeHoursSummary,
+} from '../../utils/formatters'
+import type { AttendanceRecordDto, EmployeeDetailsDto } from '../../types'
 
-// Full implementation coming in Step 5
+const PAGE_SIZE = 10
+
 export function AdminEmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+
+  const [employee, setEmployee] = useState<EmployeeDetailsDto | null>(null)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
+  // ── Fetch ─────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!id) return
+    setLoading(true)
+    setError(null)
+    adminService
+      .getEmployeeDetails(id)
+      .then((data) => {
+        if (mountedRef.current) setEmployee(data)
+      })
+      .catch(() => {
+        if (mountedRef.current) setError('שגיאה בטעינת פרטי העובד.')
+      })
+      .finally(() => {
+        if (mountedRef.current) setLoading(false)
+      })
+  }, [id])
+
+  // ── Derived data ──────────────────────────────────────────────────────────
+
+  const records = employee?.attendanceRecords ?? []
+
+  const activeRecord = useMemo<AttendanceRecordDto | undefined>(
+    () => records.find((r) => r.isActive),
+    [records]
+  )
+
+  const hoursSummary = useMemo(() => computeHoursSummary(records), [records])
+
+  // Client-side pagination of records (sorted newest first)
+  const sortedRecords = useMemo(
+    () => [...records].sort((a, b) => b.clockInTime.localeCompare(a.clockInTime)),
+    [records]
+  )
+
+  const pagedRecords = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE
+    return sortedRecords.slice(start, start + PAGE_SIZE)
+  }, [sortedRecords, page])
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  if (loading) return <FullPageSpinner />
+
+  if (error || !employee) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <AlertCircle className="h-12 w-12 text-red-400" />
+        <p className="text-gray-600 text-lg">{error ?? 'עובד לא נמצא'}</p>
+        <button onClick={() => navigate('/admin/dashboard')} className="btn-secondary">
+          חזרה לדשבורד
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">פרטי עובד</h1>
-        <p className="text-gray-500 text-sm mt-1">מזהה: {id} — יושלם בשלב 5</p>
+
+      {/* ── Back button ───────────────────────────────────────────────────── */}
+      <button
+        onClick={() => navigate('/admin/dashboard')}
+        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600
+                   transition-colors font-medium"
+      >
+        <ArrowRight className="h-4 w-4" />
+        חזרה לרשימת עובדים
+      </button>
+
+      {/* ── Employee header card ──────────────────────────────────────────── */}
+      <div className="card flex flex-wrap items-center gap-5">
+        <div className="h-16 w-16 rounded-2xl bg-primary-50 flex items-center justify-center flex-shrink-0">
+          <UserCircle className="h-9 w-9 text-primary-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold text-gray-900 truncate">
+              {employee.fullName}
+            </h1>
+            <StatusBadge isClockedIn={Boolean(activeRecord)} />
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+            <span>
+              <span className="font-medium text-gray-600">שם משתמש: </span>
+              {employee.username}
+            </span>
+            <span>
+              <span className="font-medium text-gray-600">תפקיד: </span>
+              {employee.role === 'Admin' ? 'מנהל' : 'עובד'}
+            </span>
+            <span>
+              <span className="font-medium text-gray-600">הצטרף: </span>
+              {formatDateFromServer(employee.createdAt)}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="card flex items-center gap-4 text-gray-500">
-        <UserCircle className="h-8 w-8 text-primary-400" />
-        <span>מסך פרטי עובד בבנייה...</span>
+      {/* ── Active shift info ─────────────────────────────────────────────── */}
+      {activeRecord && (
+        <div className="flex flex-wrap gap-6 bg-green-50 rounded-xl px-5 py-4 border border-green-100">
+          <div>
+            <p className="text-xs text-green-600 font-medium mb-0.5">כניסה למשמרת</p>
+            <p className="text-lg font-semibold text-gray-800 font-mono">
+              {formatTimeFromServer(activeRecord.clockInTime)}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {formatDateFromServer(activeRecord.clockInTime)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hours summary ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="card flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
+            <CalendarDays className="h-5 w-5 text-primary-500" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 font-medium">שעות שבועיות (7 ימים)</p>
+            <p className="text-2xl font-bold text-gray-900 mt-0.5 font-mono">
+              {hoursSummary.weekly}
+            </p>
+          </div>
+        </div>
+        <div className="card flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
+            <Calendar className="h-5 w-5 text-primary-500" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 font-medium">שעות חודשיות (30 ימים)</p>
+            <p className="text-2xl font-bold text-gray-900 mt-0.5 font-mono">
+              {hoursSummary.monthly}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Attendance history ────────────────────────────────────────────── */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-5">
+          <History className="h-5 w-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-gray-800">
+            היסטוריית נוכחות
+          </h2>
+          <span className="mr-auto text-xs text-gray-400 bg-gray-100 rounded-full px-2.5 py-0.5">
+            {records.length} רשומות
+          </span>
+        </div>
+
+        {records.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p>אין רשומות נוכחות להצגה</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto -mx-6 px-6">
+              <table className="table-base">
+                <thead>
+                  <tr>
+                    <th>תאריך</th>
+                    <th>שעת כניסה</th>
+                    <th>שעת יציאה</th>
+                    <th>סה"כ שעות</th>
+                    <th>סטטוס</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedRecords.map((record) => (
+                    <tr key={record.id}>
+                      <td className="font-medium text-gray-700">
+                        {formatDateFromServer(record.clockInTime)}
+                      </td>
+                      <td className="font-mono text-gray-600">
+                        {formatTimeFromServer(record.clockInTime)}
+                      </td>
+                      <td className="font-mono text-gray-600">
+                        {record.clockOutTime ? (
+                          formatTimeFromServer(record.clockOutTime)
+                        ) : (
+                          <span className="text-green-600 font-medium">פעיל</span>
+                        )}
+                      </td>
+                      <td className="font-mono text-gray-600">
+                        {displayDuration(record.duration)}
+                      </td>
+                      <td>
+                        <StatusBadge isClockedIn={record.isActive} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              totalCount={sortedRecords.length}
+              onPageChange={setPage}
+            />
+          </>
+        )}
       </div>
     </div>
   )
