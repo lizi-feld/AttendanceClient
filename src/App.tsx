@@ -17,7 +17,7 @@ function RootRedirect() {
   if (!user) return <Navigate to="/login" replace />
   return (
     <Navigate
-      to={user.employee.Role === 'Admin' ? '/admin/dashboard' : '/employee'}
+      to={user.employee.role === 'Admin' ? '/admin/dashboard' : '/employee'}
       replace
     />
   )

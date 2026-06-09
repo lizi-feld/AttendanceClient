@@ -18,7 +18,7 @@ export function LoginPage() {
   // Already logged in → redirect to the right dashboard
   useEffect(() => {
     if (!isLoading && user) {
-      const target = user.employee?.Role === 'Admin' ? '/admin/dashboard' : '/employee'
+      const target = user.employee?.role === 'Admin' ? '/admin/dashboard' : '/employee'
       navigate(target, { replace: true })
     }
   }, [user, isLoading, navigate])

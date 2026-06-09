@@ -88,11 +88,11 @@ api.interceptors.response.use(
         { withCredentials: true }
       )
 
-      tokenStore.accessToken = data.AccessToken
-      tokenStore.refreshToken = data.RefreshToken
-      flushQueue(null, data.AccessToken)
+      tokenStore.accessToken = data.accessToken
+      tokenStore.refreshToken = data.refreshToken
+      flushQueue(null, data.accessToken)
 
-      original.headers.set('Authorization', `Bearer ${data.AccessToken}`)
+      original.headers.set('Authorization', `Bearer ${data.accessToken}`)
       return api(original)
     } catch (refreshErr) {
       flushQueue(refreshErr, null)

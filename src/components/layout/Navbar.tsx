@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 
 export function Navbar() {
   const { user, logout } = useAuth()
-  const isAdmin = user?.employee.Role === 'Admin'
+  const isAdmin = user?.employee.role === 'Admin'
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
@@ -23,7 +23,7 @@ export function Navbar() {
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex flex-col items-end leading-tight">
                 <span className="text-sm font-semibold text-gray-800">
-                  {user.employee.FullName}
+                  {user.employee.fullName}
                 </span>
                 <span className="flex items-center gap-1 text-xs text-gray-500">
                   {isAdmin ? (

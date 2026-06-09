@@ -8,7 +8,7 @@ export function AdminRoute() {
 
   if (isLoading) return <FullPageSpinner />
   if (!user) return <Navigate to="/login" replace />
-  if (user.employee.Role !== 'Admin') return <Navigate to="/employee" replace />
+  if (user.employee.role !== 'Admin') return <Navigate to="/employee" replace />
 
   return <Outlet />
 }

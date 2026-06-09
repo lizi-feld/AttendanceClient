@@ -1,4 +1,6 @@
-// ─── Auth ────────────────────────────────────────────────────────────────────
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+// Request bodies stay PascalCase — ASP.NET Core binding is case-insensitive.
+// Response DTOs use camelCase — ASP.NET Core System.Text.Json default.
 
 export interface LoginRequest {
   Username: string
@@ -19,70 +21,70 @@ export interface RefreshTokenRequestDto {
 }
 
 export interface RefreshTokenResponseDto {
-  AccessToken: string
-  RefreshToken: string
+  accessToken: string
+  refreshToken: string
 }
 
-// ─── Employees ───────────────────────────────────────────────────────────────
+// ─── Employees ────────────────────────────────────────────────────────────────
 
 export interface EmployeeDto {
-  Id: number
-  Username: string
-  FullName: string
-  Role: string
-  CreatedAt: string
+  id: number
+  username: string
+  fullName: string
+  role: string
+  createdAt: string
 }
 
 export interface EmployeeDetailsDto extends EmployeeDto {
-  AttendanceRecords: AttendanceRecordDto[]
+  attendanceRecords: AttendanceRecordDto[]
 }
 
-// ─── Attendance ──────────────────────────────────────────────────────────────
+// ─── Attendance ───────────────────────────────────────────────────────────────
 
 export interface AttendanceRecordDto {
-  Id: number
-  EmployeeId: number
-  EmployeeFullName: string
-  ClockInTime: string
-  ClockOutTime: string | null
-  Duration: string | null
-  IsActive: boolean
-  CreatedAt: string
+  id: number
+  employeeId: number
+  employeeFullName: string
+  clockInTime: string
+  clockOutTime: string | null
+  duration: string | null
+  isActive: boolean
+  createdAt: string
 }
 
 export interface CurrentAttendanceStatusDto {
-  IsClockedIn: boolean
-  ActiveRecordId: number | null
-  ClockInTime: string | null
-  CurrentDuration: string | null
+  isClockedIn: boolean
+  activeRecordId: number | null
+  clockInTime: string | null
+  currentDuration: string | null
 }
 
 export interface WorkedHoursDto {
-  TotalHours: number
-  TotalMinutes: number
-  Formatted: string
+  totalHours: number
+  totalMinutes: number
+  formatted: string
 }
 
-// ─── Admin ───────────────────────────────────────────────────────────────────
+// ─── Admin ────────────────────────────────────────────────────────────────────
 
 export interface DashboardSummaryDto {
-  TotalEmployees: number
-  ClockedInNow: number
-  TotalRecordsToday: number
-  ActiveSessions: AttendanceRecordDto[]
-  GeneratedAt: string
+  totalEmployees: number
+  clockedInNow: number
+  totalRecordsToday: number
+  activeSessions: AttendanceRecordDto[]
+  generatedAt: string
 }
 
-// ─── Pagination ──────────────────────────────────────────────────────────────
+// ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PagedResult<T> {
-  Items: T[]
-  PageNumber: number
-  PageSize: number
-  TotalCount: number
+  items: T[]
+  pageNumber: number
+  pageSize: number
+  totalCount: number
 }
 
-// ─── App Auth State ──────────────────────────────────────────────────────────
+// ─── App Auth State ───────────────────────────────────────────────────────────
 
 export type UserRole = 'Employee' | 'Admin'
 

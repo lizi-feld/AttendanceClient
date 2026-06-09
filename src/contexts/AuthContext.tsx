@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       // Route based on role
-      if (data.employee.Role === 'Admin') {
+      if (data.employee.role === 'Admin') {
         navigate('/admin/dashboard', { replace: true })
       } else {
         navigate('/employee', { replace: true })
