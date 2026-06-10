@@ -8,9 +8,10 @@ import {
   UserCircle,
   AlertCircle,
   History,
+  RefreshCw,
 } from 'lucide-react'
 import { adminService } from '../../services/adminService'
-import { FullPageSpinner } from '../../components/ui/Spinner'
+import { FullPageSpinner, Spinner } from '../../components/ui/Spinner'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Pagination } from '../../components/ui/Pagination'
 import {
@@ -30,6 +31,7 @@ export function AdminEmployeeDetailPage() {
   const [employee, setEmployee] = useState<EmployeeDetailsDto | null>(null)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const mountedRef = useRef(true)
@@ -40,35 +42,52 @@ export function AdminEmployeeDetailPage() {
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
+  async function loadEmployee(showSpinner = true) {
     if (!id) return
-    setLoading(true)
+    if (showSpinner && mountedRef.current) setLoading(true)
+    else if (mountedRef.current) setRefreshing(true)
     setError(null)
-    adminService
-      .getEmployeeDetails(id)
-      .then((data) => {
-        if (mountedRef.current) setEmployee(data)
-      })
-      .catch(() => {
-        if (mountedRef.current) setError('שגיאה בטעינת פרטי העובד.')
-      })
-      .finally(() => {
-        if (mountedRef.current) setLoading(false)
-      })
+    try {
+      const data = await adminService.getEmployeeDetails(id)
+      if (mountedRef.current) setEmployee(data)
+    } catch {
+      if (mountedRef.current) setError('שגיאה בטעינת פרטי העובד.')
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    }
+  }
+
+  useEffect(() => {
+    loadEmployee(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
-  const records = employee?.attendanceRecords ?? []
+  // Defensive: backend might return the array under different casing
+  const records = useMemo<AttendanceRecordDto[]>(() => {
+    if (!employee) return []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = employee as any
+    const arr =
+      raw.attendanceRecords ??
+      raw.AttendanceRecords ??
+      raw.records ??
+      []
+    return Array.isArray(arr) ? arr : []
+  }, [employee])
 
-  const activeRecord = useMemo<AttendanceRecordDto | undefined>(
+  const activeRecord = useMemo(
     () => records.find((r) => r.isActive),
     [records]
   )
 
   const hoursSummary = useMemo(() => computeHoursSummary(records), [records])
 
-  // Client-side pagination of records (sorted newest first)
+  // Client-side sort + pagination (newest first)
   const sortedRecords = useMemo(
     () => [...records].sort((a, b) => b.clockInTime.localeCompare(a.clockInTime)),
     [records]
@@ -99,14 +118,25 @@ export function AdminEmployeeDetailPage() {
     <div className="space-y-6">
 
       {/* ── Back button ───────────────────────────────────────────────────── */}
-      <button
-        onClick={() => navigate('/admin/dashboard')}
-        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600
-                   transition-colors font-medium"
-      >
-        <ArrowRight className="h-4 w-4" />
-        חזרה לרשימת עובדים
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate('/admin/dashboard')}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600
+                     transition-colors font-medium"
+        >
+          <ArrowRight className="h-4 w-4" />
+          חזרה לרשימת עובדים
+        </button>
+
+        <button
+          onClick={() => loadEmployee(false)}
+          disabled={refreshing}
+          className="btn-secondary flex items-center gap-2 text-sm"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'מרענן...' : 'רענן'}
+        </button>
+      </div>
 
       {/* ── Employee header card ──────────────────────────────────────────── */}
       <div className="card flex flex-wrap items-center gap-5">
@@ -154,46 +184,43 @@ export function AdminEmployeeDetailPage() {
 
       {/* ── Hours summary ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="card flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
-            <CalendarDays className="h-5 w-5 text-primary-500" />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 font-medium">שעות שבועיות (7 ימים)</p>
-            <p className="text-2xl font-bold text-gray-900 mt-0.5 font-mono">
-              {hoursSummary.weekly}
-            </p>
-          </div>
-        </div>
-        <div className="card flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
-            <Calendar className="h-5 w-5 text-primary-500" />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 font-medium">שעות חודשיות (30 ימים)</p>
-            <p className="text-2xl font-bold text-gray-900 mt-0.5 font-mono">
-              {hoursSummary.monthly}
-            </p>
-          </div>
-        </div>
+        <HoursCard
+          icon={<CalendarDays className="h-5 w-5 text-primary-500" />}
+          label="שעות שבועיות (7 ימים)"
+          value={hoursSummary.weekly}
+          noData={records.length === 0}
+        />
+        <HoursCard
+          icon={<Calendar className="h-5 w-5 text-primary-500" />}
+          label="שעות חודשיות (30 ימים)"
+          value={hoursSummary.monthly}
+          noData={records.length === 0}
+        />
       </div>
 
       {/* ── Attendance history ────────────────────────────────────────────── */}
       <div className="card">
         <div className="flex items-center gap-2 mb-5">
           <History className="h-5 w-5 text-gray-400" />
-          <h2 className="text-lg font-semibold text-gray-800">
-            היסטוריית נוכחות
-          </h2>
-          <span className="mr-auto text-xs text-gray-400 bg-gray-100 rounded-full px-2.5 py-0.5">
-            {records.length} רשומות
-          </span>
+          <h2 className="text-lg font-semibold text-gray-800">היסטוריית נוכחות</h2>
+          {records.length > 0 && (
+            <span className="mr-auto text-xs text-gray-400 bg-gray-100 rounded-full px-2.5 py-0.5">
+              {records.length} רשומות
+            </span>
+          )}
         </div>
 
-        {records.length === 0 ? (
+        {refreshing ? (
+          <div className="flex justify-center py-12">
+            <Spinner size="md" />
+          </div>
+        ) : records.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>אין רשומות נוכחות להצגה</p>
+            <p className="font-medium">אין רשומות נוכחות להצגה</p>
+            <p className="text-xs mt-1">
+              הרשומות יוצגו לאחר שהעובד יתחיל לדווח נוכחות
+            </p>
           </div>
         ) : (
           <>
@@ -243,6 +270,33 @@ export function AdminEmployeeDetailPage() {
               onPageChange={setPage}
             />
           </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Hours card sub-component ──────────────────────────────────────────────────
+
+interface HoursCardProps {
+  icon: React.ReactNode
+  label: string
+  value: string
+  noData: boolean
+}
+
+function HoursCard({ icon, label, value, noData }: HoursCardProps) {
+  return (
+    <div className="card flex items-center gap-4">
+      <div className="h-12 w-12 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
+        {icon}
+      </div>
+      <div>
+        <p className="text-xs text-gray-500 font-medium">{label}</p>
+        {noData ? (
+          <p className="text-sm text-gray-400 mt-1">אין נתונים</p>
+        ) : (
+          <p className="text-2xl font-bold text-gray-900 mt-0.5 font-mono">{value}</p>
         )}
       </div>
     </div>

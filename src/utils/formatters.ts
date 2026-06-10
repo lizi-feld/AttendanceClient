@@ -60,16 +60,12 @@ function secondsToHHMM(totalSeconds: number): string {
 export function computeHoursSummary(
   records: Array<{ clockInTime: string; duration: string | null }>
 ): { weekly: string; monthly: string } {
-  const nowStr = new Date().toISOString().split('T')[0]
   const weekAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     .toISOString()
     .split('T')[0]
   const monthAgoStr = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     .toISOString()
     .split('T')[0]
-
-  // Suppress unused variable warning — nowStr is just for reference
-  void nowStr
 
   const weekly = records
     .filter((r) => r.clockInTime.split('T')[0] >= weekAgoStr)

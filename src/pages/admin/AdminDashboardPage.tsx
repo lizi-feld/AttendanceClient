@@ -7,6 +7,7 @@ import {
   Search,
   ChevronLeft,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { adminService } from '../../services/adminService'
 import { Spinner, FullPageSpinner } from '../../components/ui/Spinner'
@@ -28,6 +29,8 @@ export function AdminDashboardPage() {
 
   const [initLoading, setInitLoading] = useState(true)
   const [tableLoading, setTableLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -38,6 +41,11 @@ export function AdminDashboardPage() {
     mountedRef.current = true
     return () => { mountedRef.current = false }
   }, [])
+
+  // Keep a ref to current page so the auto-refresh interval can use it
+  // without being re-created on every page change
+  const pageRef = useRef(page)
+  useEffect(() => { pageRef.current = page }, [page])
 
   // ── Active sessions lookup map ────────────────────────────────────────────
 
@@ -58,6 +66,25 @@ export function AdminDashboardPage() {
     }
   }
 
+  // Silent background refresh (dashboard + current page of employees)
+  async function doRefresh(showSpinner = false) {
+    if (showSpinner && mountedRef.current) setRefreshing(true)
+    try {
+      const [dash, emps] = await Promise.all([
+        adminService.getDashboard(),
+        adminService.getEmployees(pageRef.current, PAGE_SIZE),
+      ])
+      if (!mountedRef.current) return
+      setDashboard(dash)
+      setEmployees(emps)
+      setLastRefreshed(new Date())
+    } catch {
+      // silent — don't disrupt the user for a background refresh failure
+    } finally {
+      if (mountedRef.current) setRefreshing(false)
+    }
+  }
+
   // ── Initial load ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -67,6 +94,7 @@ export function AdminDashboardPage() {
         if (!mountedRef.current) return
         setDashboard(dash)
         setEmployees(emps)
+        setLastRefreshed(new Date())
       })
       .catch(() => {
         if (mountedRef.current) setError('שגיאה בטעינת הנתונים. אנא רענן את הדף.')
@@ -74,6 +102,14 @@ export function AdminDashboardPage() {
       .finally(() => {
         if (mountedRef.current) setInitLoading(false)
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Auto-refresh every 5 minutes ──────────────────────────────────────────
+
+  useEffect(() => {
+    const id = setInterval(() => doRefresh(), 5 * 60 * 1000)
+    return () => clearInterval(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -140,12 +176,24 @@ export function AdminDashboardPage() {
     <div className="space-y-6">
 
       {/* ── Page header ──────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">לוח בקרה מנהל</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          נכון ל-{formatDateFromServer(dashboard?.generatedAt ?? null)}
-          {dashboard?.generatedAt ? ` בשעה ${formatTimeFromServer(dashboard.generatedAt)}` : ''}
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">לוח בקרה מנהל</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {lastRefreshed
+              ? `עודכן בשעה ${lastRefreshed.getHours().toString().padStart(2,'0')}:${lastRefreshed.getMinutes().toString().padStart(2,'0')} — רענון אוטומטי כל 5 דקות`
+              : 'טוען נתונים...'}
+          </p>
+        </div>
+        <button
+          onClick={() => doRefresh(true)}
+          disabled={refreshing}
+          className="btn-secondary flex items-center gap-2 text-sm"
+          title="רענן נתונים עכשיו"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'מרענן...' : 'רענן'}
+        </button>
       </div>
 
       {/* ── Summary cards ────────────────────────────────────────────────── */}
