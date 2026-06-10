@@ -27,10 +27,11 @@ export function formatDateTimeFromServer(isoString: string | null | undefined): 
   return `${formatDateFromServer(isoString)} ${formatTimeFromServer(isoString)}`
 }
 
-/** Pass-through for duration strings ("03:45:12") — displayed as-is from server. */
+/** Formats a server duration string, stripping any sub-second precision.
+ *  "08:30:15.1234567" → "08:30:15"   |   null → "—" */
 export function displayDuration(value: string | null | undefined): string {
   if (!value) return '—'
-  return value
+  return value.split('.')[0]
 }
 
 // ─── Client-side hours aggregation (no timezone involvement) ─────────────────

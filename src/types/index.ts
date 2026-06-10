@@ -65,6 +65,12 @@ export interface WorkedHoursDto {
   formatted: string
 }
 
+export interface TimeResponseDto {
+  currentTime: string
+  timeZone: string
+  source: string
+}
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
 export interface DashboardSummaryDto {
