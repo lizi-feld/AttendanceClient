@@ -8,11 +8,13 @@ import {
   ChevronLeft,
   AlertCircle,
   RefreshCw,
+  UserPlus,
 } from 'lucide-react'
 import { adminService } from '../../services/adminService'
 import { Spinner, FullPageSpinner } from '../../components/ui/Spinner'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Pagination } from '../../components/ui/Pagination'
+import { AddEmployeeModal } from '../../components/ui/AddEmployeeModal'
 import { formatTimeFromServer, formatDateFromServer } from '../../utils/formatters'
 import type { AttendanceRecordDto, DashboardSummaryDto, EmployeeDto, PagedResult } from '../../types'
 
@@ -35,6 +37,7 @@ export function AdminDashboardPage() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [showAddModal, setShowAddModal] = useState(false)
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -248,6 +251,14 @@ export function AdminDashboardPage() {
             <option value="active">במשמרת</option>
             <option value="inactive">לא במשמרת</option>
           </select>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap"
+          >
+            <UserPlus className="h-4 w-4" />
+            הוסף עובד
+          </button>
         </div>
 
         {tableLoading ? (
@@ -322,6 +333,12 @@ export function AdminDashboardPage() {
           </>
         )}
       </div>
+
+      <AddEmployeeModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => doRefresh()}
+      />
     </div>
   )
 }

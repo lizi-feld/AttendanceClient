@@ -1,10 +1,8 @@
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-// Request bodies stay PascalCase — ASP.NET Core binding is case-insensitive.
-// Response DTOs use camelCase — ASP.NET Core System.Text.Json default.
+// ─── Auth ────────────────────────────────────────────────────────────────────
 
 export interface LoginRequest {
-  Username: string
-  Password: string
+  username: string
+  password: string
 }
 
 export interface LoginResponse {
@@ -16,8 +14,8 @@ export interface LoginResponse {
 }
 
 export interface RefreshTokenRequestDto {
-  AccessToken: string
-  RefreshToken: string
+  accessToken: string
+  refreshToken: string
 }
 
 export interface RefreshTokenResponseDto {
@@ -25,7 +23,7 @@ export interface RefreshTokenResponseDto {
   refreshToken: string
 }
 
-// ─── Employees ────────────────────────────────────────────────────────────────
+// ─── Employees ───────────────────────────────────────────────────────────────
 
 export interface EmployeeDto {
   id: number
@@ -39,7 +37,7 @@ export interface EmployeeDetailsDto extends EmployeeDto {
   attendanceRecords: AttendanceRecordDto[]
 }
 
-// ─── Attendance ───────────────────────────────────────────────────────────────
+// ─── Attendance ──────────────────────────────────────────────────────────────
 
 export interface AttendanceRecordDto {
   id: number
@@ -71,7 +69,7 @@ export interface TimeResponseDto {
   source: string
 }
 
-// ─── Admin ────────────────────────────────────────────────────────────────────
+// ─── Admin ───────────────────────────────────────────────────────────────────
 
 export interface DashboardSummaryDto {
   totalEmployees: number
@@ -81,7 +79,7 @@ export interface DashboardSummaryDto {
   generatedAt: string
 }
 
-// ─── Pagination ───────────────────────────────────────────────────────────────
+// ─── Pagination ──────────────────────────────────────────────────────────────
 
 export interface PagedResult<T> {
   items: T[]
@@ -90,7 +88,22 @@ export interface PagedResult<T> {
   totalCount: number
 }
 
-// ─── App Auth State ───────────────────────────────────────────────────────────
+// ─── Request Payloads ────────────────────────────────────────────────────────
+
+export interface AddEmployeeRequest {
+  fullName: string
+  username: string
+  password: string
+  role: number
+}
+
+export interface UpdateEmployeeRequest {
+  fullName: string
+  username: string
+  password?: string
+}
+
+// ─── App Auth State ──────────────────────────────────────────────────────────
 
 export type UserRole = 'Employee' | 'Admin'
 

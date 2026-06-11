@@ -5,7 +5,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { AuthUser, LoginRequest } from '../types'
+import type { AuthUser, EmployeeDto, LoginRequest } from '../types'
 import { authService } from '../services/authService'
 import { tokenStore } from '../services/api'
 
@@ -16,6 +16,7 @@ interface AuthContextValue {
   isLoading: boolean
   login: (credentials: LoginRequest) => Promise<void>
   logout: () => Promise<void>
+  updateCurrentEmployee: (employee: EmployeeDto) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
@@ -40,8 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (tokenStore.accessToken && tokenStore.refreshToken) {
       try {
         await authService.revokeToken({
-          AccessToken: tokenStore.accessToken,
-          RefreshToken: tokenStore.refreshToken,
+          accessToken: tokenStore.accessToken,
+          refreshToken: tokenStore.refreshToken,
         })
       } catch {
         // ignore — we still clear local state below
@@ -49,6 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     performLogout()
   }, [performLogout])
+
+  const updateCurrentEmployee = useCallback((employee: EmployeeDto) => {
+    setUser((prev) => prev ? { ...prev, employee } : prev)
+  }, [])
 
   const login = useCallback(
     async (credentials: LoginRequest) => {
@@ -85,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [performLogout])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, updateCurrentEmployee }}>
       {children}
     </AuthContext.Provider>
   )

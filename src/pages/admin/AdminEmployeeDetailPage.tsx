@@ -9,11 +9,13 @@ import {
   AlertCircle,
   History,
   RefreshCw,
+  Pencil,
 } from 'lucide-react'
 import { adminService } from '../../services/adminService'
 import { FullPageSpinner, Spinner } from '../../components/ui/Spinner'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Pagination } from '../../components/ui/Pagination'
+import { EditEmployeeModal } from '../../components/ui/EditEmployeeModal'
 import {
   formatDateFromServer,
   formatTimeFromServer,
@@ -33,6 +35,7 @@ export function AdminEmployeeDetailPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -165,6 +168,13 @@ export function AdminEmployeeDetailPage() {
             </span>
           </div>
         </div>
+        <button
+          onClick={() => setShowEditModal(true)}
+          className="btn-secondary flex items-center gap-2 text-sm flex-shrink-0"
+        >
+          <Pencil className="h-4 w-4" />
+          ערוך עובד
+        </button>
       </div>
 
       {/* ── Active shift info ─────────────────────────────────────────────── */}
@@ -272,6 +282,18 @@ export function AdminEmployeeDetailPage() {
           </>
         )}
       </div>
+
+      <EditEmployeeModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        employeeId={employee.id}
+        initialFullName={employee.fullName}
+        initialUsername={employee.username}
+        onSuccess={(updated) => {
+          setEmployee((prev) => prev ? { ...prev, ...updated } : prev)
+          setShowEditModal(false)
+        }}
+      />
     </div>
   )
 }

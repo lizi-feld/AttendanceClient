@@ -7,12 +7,14 @@ import {
   Calendar,
   AlertCircle,
   History,
+  Settings,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { attendanceService } from '../services/attendanceService'
 import { Spinner, FullPageSpinner } from '../components/ui/Spinner'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { Pagination } from '../components/ui/Pagination'
+import { EditEmployeeModal } from '../components/ui/EditEmployeeModal'
 import {
   formatDateFromServer,
   formatTimeFromServer,
@@ -28,7 +30,8 @@ import type {
 const PAGE_SIZE = 10
 
 export function EmployeeDashboardPage() {
-  const { user } = useAuth()
+  const { user, updateCurrentEmployee } = useAuth()
+  const [showEditModal, setShowEditModal] = useState(false)
 
   const [status, setStatus] = useState<CurrentAttendanceStatusDto | null>(null)
   const [weeklyHours, setWeeklyHours] = useState<WorkedHoursDto | null>(null)
@@ -167,7 +170,16 @@ export function EmployeeDashboardPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">לוח בקרה אישי</p>
         </div>
-        <StatusBadge isClockedIn={isClockedIn} />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Settings className="h-4 w-4" />
+            ערוך פרופיל
+          </button>
+          <StatusBadge isClockedIn={isClockedIn} />
+        </div>
       </div>
 
       {/* ── Status + Actions card ─────────────────────────────────────────── */}
@@ -246,6 +258,20 @@ export function EmployeeDashboardPage() {
           data={monthlyHours}
         />
       </div>
+
+      {user && (
+        <EditEmployeeModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          employeeId={user.employee.id}
+          initialFullName={user.employee.fullName}
+          initialUsername={user.employee.username}
+          onSuccess={(updated) => {
+            updateCurrentEmployee(updated)
+            setShowEditModal(false)
+          }}
+        />
+      )}
 
       {/* ── History table ─────────────────────────────────────────────────── */}
       <div className="card">
