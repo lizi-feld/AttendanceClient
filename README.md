@@ -1,73 +1,51 @@
-# React + TypeScript + Vite
+# Time & Attendance System - Backend API
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the backend API for the Time and Attendance System, built with **ASP.NET Core** and **Entity Framework Core**. It provides a robust, secure, and resilient architecture for managing employee work hours.
 
-Currently, two official plugins are available:
+## Tech Stack
+* **Framework:** ASP.NET Core (C#)
+* **Database:** Microsoft SQL Server with Entity Framework Core
+* **Authentication:** JWT Bearer Token (with HttpOnly Refresh Tokens support)
+* **Validation:** FluentValidation
+* **Resilience:** Polly (Retry policies, Exponential Backoff, Jitter, and Timeouts)
+* **Documentation:** Swagger / OpenAPI
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Core Architecture & Business Rules
 
-## React Compiler
+### 1. Single Source of Truth for Time (Europe/Zurich)
+To prevent time-tampering, the system **never** relies on the client's local time or the host server's default clock. 
+All clock-in and clock-out events are stamped using an external time provider (`TimeAPI.io`) specifically set to the `Europe/Zurich` timezone. 
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. Network Resilience with Polly
+Fetching time from an external API is critical. We wrapped the HTTP calls using **Polly Resilience Pipelines**. 
+If the external time API is slow or fails, the system automatically applies exponential backoff retries with jitter before failing fast to avoid blocking server threads.
 
-## Expanding the ESLint configuration
+### 3. Role-Based Access Control (RBAC)
+* **Employee:** Can clock in/out, view their own status, and see their personal attendance history.
+* **Admin:** Can view all employees, monitor live shift statuses, and manually add or edit employee records.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 4. Manual / Retroactive Updates
+Admins and Employees can manually update shift times retroactively. When doing so, a **Reason/Note is strictly required** via FluentValidation. For standard daily clock-ins, this note remains empty.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## API Endpoints Summary
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Auth (`/api/auth`)
+* `POST /login` - Authenticates user and returns JWT + Refresh Token.
+* `POST /refresh-token` - Rotates expired access tokens.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### Attendance (`/api/attendance`)
+* `POST /clock-in` & `POST /clock-out` - Manages active shifts.
+* `GET /status` - Returns live session status.
+* `PUT /manual-update` - Retroactive update (requires mandatory note).
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Admin (`/api/admin`)
+* `GET /dashboard` - System-wide stats (total employees, active shifts).
+* `GET /employees/{id}` - Detailed view of specific employees.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Getting Started
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1. Clone the repository.
+2. Update the `appsettings.json` with your SQL Server Connection String and JWT Secret.
+3. Ensure `TimeProvider` settings are configured (BaseUrl, TimeZone, Timeout settings).
+4. Run EF Core Migrations: `dotnet ef database update`
+5. Run the application: `dotnet run`
