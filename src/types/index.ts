@@ -31,6 +31,7 @@ export interface EmployeeDto {
   fullName: string
   role: string
   createdAt: string
+  attendanceRecords?: AttendanceRecordDto[]
 }
 
 export interface EmployeeDetailsDto extends EmployeeDto {
@@ -48,6 +49,7 @@ export interface AttendanceRecordDto {
   duration: string | null
   isActive: boolean
   createdAt: string
+  note?: string | null
 }
 
 export interface CurrentAttendanceStatusDto {
@@ -101,6 +103,13 @@ export interface UpdateEmployeeRequest {
   fullName: string
   username: string
   password?: string
+}
+
+export interface ManualAttendanceUpdateRequest {
+  recordId: number
+  newClockInTime: string
+  newClockOutTime: string
+  note: string
 }
 
 // ─── App Auth State ──────────────────────────────────────────────────────────

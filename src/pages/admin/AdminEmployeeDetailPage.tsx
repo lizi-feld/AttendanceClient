@@ -16,6 +16,7 @@ import { FullPageSpinner, Spinner } from '../../components/ui/Spinner'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Pagination } from '../../components/ui/Pagination'
 import { EditEmployeeModal } from '../../components/ui/EditEmployeeModal'
+import { ManualTimeUpdateModal } from '../../components/ui/ManualTimeUpdateModal'
 import {
   formatDateFromServer,
   formatTimeFromServer,
@@ -36,6 +37,8 @@ export function AdminEmployeeDetailPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showManualModal, setShowManualModal] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecordDto | null>(null)
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -243,13 +246,19 @@ export function AdminEmployeeDetailPage() {
                     <th>שעת יציאה</th>
                     <th>סה"כ שעות</th>
                     <th>סטטוס</th>
+                    <th> </th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagedRecords.map((record) => (
                     <tr key={record.id}>
                       <td className="font-medium text-gray-700">
-                        {formatDateFromServer(record.clockInTime)}
+                        <div className="flex items-center gap-1.5">
+                          {formatDateFromServer(record.clockInTime)}
+                           {record.note && (
+                            <ManualUpdateBadge note={record.note} />
+                          )}
+                        </div>
                       </td>
                       <td className="font-mono text-gray-600">
                         {formatTimeFromServer(record.clockInTime)}
@@ -266,6 +275,16 @@ export function AdminEmployeeDetailPage() {
                       </td>
                       <td>
                         <StatusBadge isClockedIn={record.isActive} />
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => { setSelectedRecord(record); setShowManualModal(true) }}
+                          className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800
+                                     font-medium transition-colors"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          עדכן
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -294,7 +313,31 @@ export function AdminEmployeeDetailPage() {
           setShowEditModal(false)
         }}
       />
+
+      {selectedRecord && (
+        <ManualTimeUpdateModal
+          isOpen={showManualModal}
+          onClose={() => setShowManualModal(false)}
+          recordId={selectedRecord.id}
+          initialClockInTime={selectedRecord.clockInTime}
+          initialClockOutTime={selectedRecord.clockOutTime}
+          onSuccess={() => loadEmployee(false)}
+        />
+      )}
     </div>
+  )
+}
+
+// ── Manual update badge ───────────────────────────────────────────────────────
+
+function ManualUpdateBadge({ note }: { note?: string | null }) {
+  return (
+    <span
+      title={note ? `עודכן ידנית\n${note}` : 'עודכן ידנית'}
+      className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-100 text-amber-600 cursor-help flex-shrink-0"
+    >
+      <Pencil className="h-2.5 w-2.5" />
+    </span>
   )
 }
 

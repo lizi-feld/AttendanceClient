@@ -2,6 +2,7 @@ import api from './api'
 import type {
   AttendanceRecordDto,
   CurrentAttendanceStatusDto,
+  ManualAttendanceUpdateRequest,
   PagedResult,
   WorkedHoursDto,
 } from '../types'
@@ -28,4 +29,7 @@ export const attendanceService = {
 
   getMonthlyHours: () =>
     api.get<WorkedHoursDto>('/api/attendance/monthly-hours').then((r) => r.data),
+
+  manualUpdate: (data: ManualAttendanceUpdateRequest) =>
+    api.put<AttendanceRecordDto>('/api/attendance/manual-update', data).then((r) => r.data),
 }

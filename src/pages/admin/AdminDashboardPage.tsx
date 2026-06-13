@@ -57,6 +57,20 @@ export function AdminDashboardPage() {
     return new Map(dashboard.activeSessions.map((s) => [s.employeeId, s]))
   }, [dashboard])
 
+  // ── Get most recent clock-in for an employee ──────────────────────────────
+  // Returns the active session if exists, otherwise the most recent historical record
+  const getMostRecentClockIn = (emp: EmployeeDto): AttendanceRecordDto | null => {
+    const activeSession = activeMap.get(emp.id)
+    if (activeSession) return activeSession
+
+    if (!emp.attendanceRecords || emp.attendanceRecords.length === 0) return null
+
+    // Sort by createdAt descending and return the most recent
+    return emp.attendanceRecords.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0]
+  }
+
   // ── Fetchers ──────────────────────────────────────────────────────────────
 
   async function fetchEmployees(pageNum: number) {
@@ -287,6 +301,7 @@ export function AdminDashboardPage() {
                 <tbody>
                   {filteredEmployees.map((emp) => {
                     const session = activeMap.get(emp.id)
+                    const lastClockIn = getMostRecentClockIn(emp)
                     return (
                       <tr key={emp.id}>
                         <td className="font-medium text-gray-800">{emp.fullName}</td>
@@ -295,13 +310,13 @@ export function AdminDashboardPage() {
                           <StatusBadge isClockedIn={Boolean(session)} />
                         </td>
                         <td className="text-gray-600 text-sm">
-                          {session
-                            ? formatDateFromServer(session.clockInTime)
+                          {lastClockIn
+                            ? formatDateFromServer(lastClockIn.clockInTime)
                             : '—'}
                         </td>
                         <td className="font-mono text-gray-600 text-sm">
-                          {session
-                            ? formatTimeFromServer(session.clockInTime)
+                          {lastClockIn
+                            ? formatTimeFromServer(lastClockIn.clockInTime)
                             : '—'}
                         </td>
                         <td>

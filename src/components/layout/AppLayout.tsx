@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Navbar } from './Navbar'
 import { LiveClock } from '../ui/LiveClock'
+import { Toaster } from '../ui/Toast'
 
 export function AppLayout() {
   return (
@@ -10,6 +11,7 @@ export function AppLayout() {
         <Outlet />
       </main>
       <LiveClock />
+      <Toaster />
     </div>
   )
 }

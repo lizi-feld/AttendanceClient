@@ -8,6 +8,7 @@ import {
   AlertCircle,
   History,
   Settings,
+  Pencil,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { attendanceService } from '../services/attendanceService'
@@ -15,6 +16,7 @@ import { Spinner, FullPageSpinner } from '../components/ui/Spinner'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { Pagination } from '../components/ui/Pagination'
 import { EditEmployeeModal } from '../components/ui/EditEmployeeModal'
+import { ManualTimeUpdateModal } from '../components/ui/ManualTimeUpdateModal'
 import {
   formatDateFromServer,
   formatTimeFromServer,
@@ -29,9 +31,22 @@ import type {
 
 const PAGE_SIZE = 10
 
+function ManualUpdateBadge({ note }: { note?: string | null }) {
+  return (
+    <span
+      title={note ? `עודכן ידנית\n${note}` : 'עודכן ידנית'}
+      className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-100 text-amber-600 cursor-help flex-shrink-0"
+    >
+      <Pencil className="h-2.5 w-2.5" />
+    </span>
+  )
+}
+
 export function EmployeeDashboardPage() {
   const { user, updateCurrentEmployee } = useAuth()
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showManualModal, setShowManualModal] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecordDto | null>(null)
 
   const [status, setStatus] = useState<CurrentAttendanceStatusDto | null>(null)
   const [weeklyHours, setWeeklyHours] = useState<WorkedHoursDto | null>(null)
@@ -273,6 +288,17 @@ export function EmployeeDashboardPage() {
         />
       )}
 
+      {selectedRecord && (
+        <ManualTimeUpdateModal
+          isOpen={showManualModal}
+          onClose={() => setShowManualModal(false)}
+          recordId={selectedRecord.id}
+          initialClockInTime={selectedRecord.clockInTime}
+          initialClockOutTime={selectedRecord.clockOutTime}
+          onSuccess={() => { fetchHistory(page); void fetchHours() }}
+        />
+      )}
+
       {/* ── History table ─────────────────────────────────────────────────── */}
       <div className="card">
         <div className="flex items-center gap-2 mb-5">
@@ -300,13 +326,19 @@ export function EmployeeDashboardPage() {
                     <th>שעת יציאה</th>
                     <th>סה"כ שעות</th>
                     <th>סטטוס</th>
+                    <th> </th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.items?.map((record) => (
                     <tr key={record.id}>
                       <td className="font-medium text-gray-700">
-                        {formatDateFromServer(record.clockInTime)}
+                        <div className="flex items-center gap-1.5">
+                          {formatDateFromServer(record.clockInTime)}
+                          {record.note && (
+                            <ManualUpdateBadge note={record.note} />
+                          )}
+                        </div>
                       </td>
                       <td className="font-mono text-gray-600">
                         {formatTimeFromServer(record.clockInTime)}
@@ -321,6 +353,16 @@ export function EmployeeDashboardPage() {
                       </td>
                       <td>
                         <StatusBadge isClockedIn={record.isActive} />
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => { setSelectedRecord(record); setShowManualModal(true) }}
+                          className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800
+                                     font-medium transition-colors"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          עדכן
+                        </button>
                       </td>
                     </tr>
                   ))}
