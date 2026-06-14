@@ -1,5 +1,12 @@
 import api from './api'
-import type { DashboardSummaryDto, EmployeeDetailsDto, EmployeeDto, PagedResult } from '../types'
+import type {
+  AttendanceRecordDto,
+  DashboardSummaryDto,
+  EmployeeDetailsDto,
+  EmployeeDto,
+  ManualAddShiftRequest,
+  PagedResult,
+} from '../types'
 
 export const adminService = {
   getDashboard: () =>
@@ -14,4 +21,7 @@ export const adminService = {
 
   getEmployeeDetails: (id: number | string) =>
     api.get<EmployeeDetailsDto>(`/api/admin/employees/${id}`).then((r) => r.data),
+
+  adminManualAddShift: (data: ManualAddShiftRequest) =>
+    api.post<AttendanceRecordDto>('/api/admin/attendance/manual-add', data).then((r) => r.data),
 }

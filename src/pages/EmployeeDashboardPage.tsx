@@ -9,6 +9,7 @@ import {
   History,
   Settings,
   Pencil,
+  Plus,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { attendanceService } from '../services/attendanceService'
@@ -17,6 +18,7 @@ import { StatusBadge } from '../components/ui/StatusBadge'
 import { Pagination } from '../components/ui/Pagination'
 import { EditEmployeeModal } from '../components/ui/EditEmployeeModal'
 import { ManualTimeUpdateModal } from '../components/ui/ManualTimeUpdateModal'
+import { AddManualShiftModal } from '../components/ui/AddManualShiftModal'
 import {
   formatDateFromServer,
   formatTimeFromServer,
@@ -46,6 +48,7 @@ export function EmployeeDashboardPage() {
   const { user, updateCurrentEmployee } = useAuth()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showManualModal, setShowManualModal] = useState(false)
+  const [showAddShiftModal, setShowAddShiftModal] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecordDto | null>(null)
 
   const [status, setStatus] = useState<CurrentAttendanceStatusDto | null>(null)
@@ -299,11 +302,24 @@ export function EmployeeDashboardPage() {
         />
       )}
 
+      <AddManualShiftModal
+        isOpen={showAddShiftModal}
+        onClose={() => setShowAddShiftModal(false)}
+        onSuccess={() => { fetchHistory(page); void fetchHours() }}
+      />
+
       {/* ── History table ─────────────────────────────────────────────────── */}
       <div className="card">
         <div className="flex items-center gap-2 mb-5">
           <History className="h-5 w-5 text-gray-400" />
           <h2 className="text-lg font-semibold text-gray-800">היסטוריית נוכחות</h2>
+          <button
+            onClick={() => setShowAddShiftModal(true)}
+            className="mr-auto btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            הוסף משמרת ידנית
+          </button>
         </div>
 
         {historyLoading ? (

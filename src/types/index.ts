@@ -112,6 +112,14 @@ export interface ManualAttendanceUpdateRequest {
   note: string
 }
 
+export interface ManualAddShiftRequest {
+  date: string         // "YYYY-MM-DD"  → DateOnly on the backend
+  clockInTime: string  // "HH:mm:ss"   → TimeOnly on the backend
+  clockOutTime: string // "HH:mm:ss"   → TimeOnly on the backend
+  note: string
+  employeeId?: number  // admin endpoint only
+}
+
 // ─── App Auth State ──────────────────────────────────────────────────────────
 
 export type UserRole = 'Employee' | 'Admin'

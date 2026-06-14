@@ -10,6 +10,7 @@ import {
   History,
   RefreshCw,
   Pencil,
+  Plus,
 } from 'lucide-react'
 import { adminService } from '../../services/adminService'
 import { FullPageSpinner, Spinner } from '../../components/ui/Spinner'
@@ -17,6 +18,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Pagination } from '../../components/ui/Pagination'
 import { EditEmployeeModal } from '../../components/ui/EditEmployeeModal'
 import { ManualTimeUpdateModal } from '../../components/ui/ManualTimeUpdateModal'
+import { AddManualShiftModal } from '../../components/ui/AddManualShiftModal'
 import {
   formatDateFromServer,
   formatTimeFromServer,
@@ -38,6 +40,7 @@ export function AdminEmployeeDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showManualModal, setShowManualModal] = useState(false)
+  const [showAddShiftModal, setShowAddShiftModal] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecordDto | null>(null)
 
   const mountedRef = useRef(true)
@@ -171,13 +174,22 @@ export function AdminEmployeeDetailPage() {
             </span>
           </div>
         </div>
-        <button
-          onClick={() => setShowEditModal(true)}
-          className="btn-secondary flex items-center gap-2 text-sm flex-shrink-0"
-        >
-          <Pencil className="h-4 w-4" />
-          ערוך עובד
-        </button>
+        <div className="flex flex-wrap gap-2 flex-shrink-0">
+          <button
+            onClick={() => setShowAddShiftModal(true)}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            הוסף משמרת ידנית
+          </button>
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Pencil className="h-4 w-4" />
+            ערוך עובד
+          </button>
+        </div>
       </div>
 
       {/* ── Active shift info ─────────────────────────────────────────────── */}
@@ -324,6 +336,13 @@ export function AdminEmployeeDetailPage() {
           onSuccess={() => loadEmployee(false)}
         />
       )}
+
+      <AddManualShiftModal
+        isOpen={showAddShiftModal}
+        onClose={() => setShowAddShiftModal(false)}
+        targetEmployeeId={employee.id}
+        onSuccess={() => loadEmployee(false)}
+      />
     </div>
   )
 }

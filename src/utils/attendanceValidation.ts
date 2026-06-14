@@ -21,3 +21,26 @@ export const manualUpdateSchema = z
   )
 
 export type ManualUpdateFormData = z.infer<typeof manualUpdateSchema>
+
+export const addShiftSchema = z
+  .object({
+    date: z.string().min(1, 'תאריך הוא שדה חובה'),
+    clockInTime: z.string().min(1, 'שעת כניסה היא שדה חובה'),
+    clockOutTime: z.string().min(1, 'שעת יציאה היא שדה חובה'),
+    note: z
+      .string()
+      .min(1, 'הערה היא שדה חובה')
+      .max(500, 'הערה לא יכולה לעלות על 500 תווים'),
+  })
+  .refine(
+    (data) =>
+      !data.clockInTime ||
+      !data.clockOutTime ||
+      data.clockOutTime > data.clockInTime,
+    {
+      message: 'שעת היציאה חייבת להיות לאחר שעת הכניסה',
+      path: ['clockOutTime'],
+    }
+  )
+
+export type AddShiftFormData = z.infer<typeof addShiftSchema>

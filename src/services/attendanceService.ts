@@ -2,6 +2,7 @@ import api from './api'
 import type {
   AttendanceRecordDto,
   CurrentAttendanceStatusDto,
+  ManualAddShiftRequest,
   ManualAttendanceUpdateRequest,
   PagedResult,
   WorkedHoursDto,
@@ -32,4 +33,7 @@ export const attendanceService = {
 
   manualUpdate: (data: ManualAttendanceUpdateRequest) =>
     api.put<AttendanceRecordDto>('/api/attendance/manual-update', data).then((r) => r.data),
+
+  manualAddShift: (data: ManualAddShiftRequest) =>
+    api.post<AttendanceRecordDto>('/api/attendance/manual-add', data).then((r) => r.data),
 }
