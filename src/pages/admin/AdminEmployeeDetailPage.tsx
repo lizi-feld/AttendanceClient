@@ -11,6 +11,9 @@ import {
   RefreshCw,
   Pencil,
   Plus,
+  ChevronUp,
+  ChevronDown,
+  ArrowUpDown,
 } from 'lucide-react'
 import { adminService } from '../../services/adminService'
 import { FullPageSpinner, Spinner } from '../../components/ui/Spinner'
@@ -29,12 +32,46 @@ import type { AttendanceRecordDto, EmployeeDetailsDto } from '../../types'
 
 const PAGE_SIZE = 10
 
+type SortKey = 'date' | 'clockIn' | 'clockOut' | 'duration' | 'status'
+type SortDir = 'asc' | 'desc'
+
+function SortTh({
+  label, col, active, dir, onSort,
+}: {
+  label: string
+  col: SortKey
+  active: SortKey
+  dir: SortDir
+  onSort: (k: SortKey) => void
+}) {
+  const isActive = col === active
+  return (
+    <th>
+      <button
+        onClick={() => onSort(col)}
+        className="inline-flex items-center gap-1 group select-none hover:text-primary-600 transition-colors"
+      >
+        {label}
+        {isActive ? (
+          dir === 'asc'
+            ? <ChevronUp className="h-3.5 w-3.5 text-primary-500" />
+            : <ChevronDown className="h-3.5 w-3.5 text-primary-500" />
+        ) : (
+          <ArrowUpDown className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-400" />
+        )}
+      </button>
+    </th>
+  )
+}
+
 export function AdminEmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
   const [employee, setEmployee] = useState<EmployeeDetailsDto | null>(null)
   const [page, setPage] = useState(1)
+  const [sortKey, setSortKey] = useState<SortKey>('date')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -96,11 +133,43 @@ export function AdminEmployeeDetailPage() {
 
   const hoursSummary = useMemo(() => computeHoursSummary(records), [records])
 
-  // Client-side sort + pagination (newest first)
-  const sortedRecords = useMemo(
-    () => [...records].sort((a, b) => b.clockInTime.localeCompare(a.clockInTime)),
-    [records]
-  )
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('desc')
+    }
+    setPage(1)
+  }
+
+  // Client-side sort + pagination
+  const sortedRecords = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    const parseDuration = (d: string | null) => {
+      if (!d) return -1
+      const parts = d.split(':').map(Number)
+      return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : 0
+    }
+    return [...records].sort((a, b) => {
+      switch (sortKey) {
+        case 'date':
+        case 'clockIn':
+          return dir * a.clockInTime.localeCompare(b.clockInTime)
+        case 'clockOut':
+          if (!a.clockOutTime && !b.clockOutTime) return 0
+          if (!a.clockOutTime) return 1
+          if (!b.clockOutTime) return -1
+          return dir * a.clockOutTime.localeCompare(b.clockOutTime)
+        case 'duration':
+          return dir * (parseDuration(a.duration) - parseDuration(b.duration))
+        case 'status':
+          return dir * ((a.isActive ? 1 : 0) - (b.isActive ? 1 : 0))
+        default:
+          return 0
+      }
+    })
+  }, [records, sortKey, sortDir])
 
   const pagedRecords = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE
@@ -253,11 +322,11 @@ export function AdminEmployeeDetailPage() {
               <table className="table-base">
                 <thead>
                   <tr>
-                    <th>תאריך</th>
-                    <th>שעת כניסה</th>
-                    <th>שעת יציאה</th>
-                    <th>סה"כ שעות</th>
-                    <th>סטטוס</th>
+                    <SortTh label="תאריך"      col="date"     active={sortKey} dir={sortDir} onSort={handleSort} />
+                    <SortTh label="שעת כניסה"  col="clockIn"  active={sortKey} dir={sortDir} onSort={handleSort} />
+                    <SortTh label="שעת יציאה"  col="clockOut" active={sortKey} dir={sortDir} onSort={handleSort} />
+                    <SortTh label='סה"כ שעות'  col="duration" active={sortKey} dir={sortDir} onSort={handleSort} />
+                    <SortTh label="סטטוס"      col="status"   active={sortKey} dir={sortDir} onSort={handleSort} />
                     <th> </th>
                   </tr>
                 </thead>
