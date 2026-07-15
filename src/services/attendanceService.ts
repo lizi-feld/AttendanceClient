@@ -18,12 +18,16 @@ export const attendanceService = {
   clockOut: () =>
     api.post<AttendanceRecordDto>('/api/attendance/clock-out').then((r) => r.data),
 
-  getHistory: (pageNumber = 1, pageSize = 10) =>
-    api
-      .get<PagedResult<AttendanceRecordDto>>('/api/attendance/history', {
-        params: { pageNumber, pageSize },
-      })
-      .then((r) => r.data),
+  getHistory: (pageNumber = 1, pageSize = 10, year?: number, month?: number) => {
+    const params: Record<string, number> = { pageNumber, pageSize }
+
+    if (typeof year === 'number') params.year = year
+    if (typeof month === 'number') params.month = month
+
+    return api
+      .get<PagedResult<AttendanceRecordDto>>('/api/attendance/history', { params })
+      .then((r) => r.data)
+  },
 
   getWeeklyHours: () =>
     api.get<WorkedHoursDto>('/api/attendance/weekly-hours').then((r) => r.data),

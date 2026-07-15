@@ -19,6 +19,7 @@ import { Pagination } from '../components/ui/Pagination'
 import { EditEmployeeModal } from '../components/ui/EditEmployeeModal'
 import { ManualTimeUpdateModal } from '../components/ui/ManualTimeUpdateModal'
 import { AddManualShiftModal } from '../components/ui/AddManualShiftModal'
+import { AttendanceHistorySidebar } from '../components/ui/AttendanceHistorySidebar'
 import {
   formatDateFromServer,
   formatTimeFromServer,
@@ -56,9 +57,12 @@ export function EmployeeDashboardPage() {
   const [monthlyHours, setMonthlyHours] = useState<WorkedHoursDto | null>(null)
   const [history, setHistory] = useState<PagedResult<AttendanceRecordDto> | null>(null)
   const [page, setPage] = useState(1)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 
   const [initLoading, setInitLoading] = useState(true)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -87,11 +91,19 @@ export function EmployeeDashboardPage() {
     }
   }
 
-  async function fetchHistory(pageNum: number) {
-    if (mountedRef.current) setHistoryLoading(true)
+  async function fetchHistory(pageNum: number, year = selectedYear, month = selectedMonth) {
+    if (mountedRef.current) {
+      setHistoryLoading(true)
+      setHistoryError(null)
+    }
+
     try {
-      const data = await attendanceService.getHistory(pageNum, PAGE_SIZE)
+      const data = await attendanceService.getHistory(pageNum, PAGE_SIZE, year, month)
       if (mountedRef.current) setHistory(data)
+    } catch {
+      if (mountedRef.current) {
+        setHistoryError('שגיאה בטעינת ההיסטוריה. אנא נסה שוב.')
+      }
     } finally {
       if (mountedRef.current) setHistoryLoading(false)
     }
@@ -102,7 +114,7 @@ export function EmployeeDashboardPage() {
   useEffect(() => {
     setInitLoading(true)
     setInitError(null)
-    Promise.all([fetchStatus(), fetchHours(), fetchHistory(1)])
+    Promise.all([fetchStatus(), fetchHours(), fetchHistory(1, selectedYear, selectedMonth)])
       .catch(() => {
         if (mountedRef.current) setInitError('שגיאה בטעינת הנתונים. אנא רענן את הדף.')
       })
@@ -128,7 +140,7 @@ export function EmployeeDashboardPage() {
     setActionError(null)
     try {
       await attendanceService.clockIn()
-      await Promise.all([fetchStatus(), fetchHours(), fetchHistory(1)])
+      await Promise.all([fetchStatus(), fetchHours(), fetchHistory(1, selectedYear, selectedMonth)])
       setPage(1)
     } catch {
       setActionError('שגיאה בביצוע כניסה למשמרת. אנא נסה שוב.')
@@ -142,7 +154,7 @@ export function EmployeeDashboardPage() {
     setActionError(null)
     try {
       await attendanceService.clockOut()
-      await Promise.all([fetchStatus(), fetchHours(), fetchHistory(1)])
+      await Promise.all([fetchStatus(), fetchHours(), fetchHistory(1, selectedYear, selectedMonth)])
       setPage(1)
     } catch {
       setActionError('שגיאה בביצוע יציאה ממשמרת. אנא נסה שוב.')
@@ -153,7 +165,19 @@ export function EmployeeDashboardPage() {
 
   function handlePageChange(newPage: number) {
     setPage(newPage)
-    fetchHistory(newPage)
+    void fetchHistory(newPage, selectedYear, selectedMonth)
+  }
+
+  function handleYearChange(year: number) {
+    setSelectedYear(year)
+    setPage(1)
+    void fetchHistory(1, year, selectedMonth)
+  }
+
+  function handleMonthChange(month: number) {
+    setSelectedMonth(month)
+    setPage(1)
+    void fetchHistory(1, selectedYear, month)
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -298,103 +322,117 @@ export function EmployeeDashboardPage() {
           recordId={selectedRecord.id}
           initialClockInTime={selectedRecord.clockInTime}
           initialClockOutTime={selectedRecord.clockOutTime}
-          onSuccess={() => { fetchHistory(page); void fetchHours() }}
+          onSuccess={() => { void fetchHistory(page, selectedYear, selectedMonth); void fetchHours() }}
         />
       )}
 
       <AddManualShiftModal
         isOpen={showAddShiftModal}
         onClose={() => setShowAddShiftModal(false)}
-        onSuccess={() => { fetchHistory(page); void fetchHours() }}
+        onSuccess={() => { void fetchHistory(page, selectedYear, selectedMonth); void fetchHours() }}
       />
 
       {/* ── History table ─────────────────────────────────────────────────── */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-5">
-          <History className="h-5 w-5 text-gray-400" />
-          <h2 className="text-lg font-semibold text-gray-800">היסטוריית נוכחות</h2>
-          <button
-            onClick={() => setShowAddShiftModal(true)}
-            className="mr-auto btn-secondary flex items-center gap-2 text-sm"
-          >
-            <Plus className="h-4 w-4" />
-            הוסף משמרת ידנית
-          </button>
+      <div className="flex flex-col gap-6 xl:flex-row">
+        <div className="card flex-1">
+          <div className="flex items-center gap-2 mb-5">
+            <History className="h-5 w-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-800">היסטוריית נוכחות</h2>
+            <button
+              onClick={() => setShowAddShiftModal(true)}
+              className="mr-auto btn-secondary flex items-center gap-2 text-sm"
+            >
+              <Plus className="h-4 w-4" />
+              הוסף משמרת ידנית
+            </button>
+          </div>
+
+          {historyError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {historyError}
+            </div>
+          ) : historyLoading ? (
+            <div className="flex justify-center py-12">
+              <Spinner size="md" />
+            </div>
+          ) : !history || history.items?.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p>אין רשומות נוכחות להצגה</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto -mx-6 px-6">
+                <table className="table-base">
+                  <thead>
+                    <tr>
+                      <th>תאריך</th>
+                      <th>שעת כניסה</th>
+                      <th>שעת יציאה</th>
+                      <th>סה"כ שעות</th>
+                      <th>סטטוס</th>
+                      <th> </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.items?.map((record) => (
+                      <tr key={record.id}>
+                        <td className="font-medium text-gray-700">
+                          <div className="flex items-center gap-1.5">
+                            {formatDateFromServer(record.clockInTime)}
+                            {record.note && (
+                              <ManualUpdateBadge note={record.note} />
+                            )}
+                          </div>
+                        </td>
+                        <td className="font-mono text-gray-600">
+                          {formatTimeFromServer(record.clockInTime)}
+                        </td>
+                        <td className="font-mono text-gray-600">
+                          {record.clockOutTime
+                            ? formatTimeFromServer(record.clockOutTime)
+                            : <span className="text-green-600 font-medium">פעיל</span>}
+                        </td>
+                        <td className="font-mono text-gray-600">
+                          {displayDuration(record.duration)}
+                        </td>
+                        <td>
+                          <StatusBadge isClockedIn={record.isActive} />
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => { setSelectedRecord(record); setShowManualModal(true) }}
+                            className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800
+                                       font-medium transition-colors"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            עדכן
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <Pagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                totalCount={history.totalCount}
+                onPageChange={handlePageChange}
+                disabled={historyLoading}
+              />
+            </>
+          )}
         </div>
 
-        {historyLoading ? (
-          <div className="flex justify-center py-12">
-            <Spinner size="md" />
-          </div>
-        ) : !history || history.items?.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>אין רשומות נוכחות להצגה</p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto -mx-6 px-6">
-              <table className="table-base">
-                <thead>
-                  <tr>
-                    <th>תאריך</th>
-                    <th>שעת כניסה</th>
-                    <th>שעת יציאה</th>
-                    <th>סה"כ שעות</th>
-                    <th>סטטוס</th>
-                    <th> </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.items?.map((record) => (
-                    <tr key={record.id}>
-                      <td className="font-medium text-gray-700">
-                        <div className="flex items-center gap-1.5">
-                          {formatDateFromServer(record.clockInTime)}
-                          {record.note && (
-                            <ManualUpdateBadge note={record.note} />
-                          )}
-                        </div>
-                      </td>
-                      <td className="font-mono text-gray-600">
-                        {formatTimeFromServer(record.clockInTime)}
-                      </td>
-                      <td className="font-mono text-gray-600">
-                        {record.clockOutTime
-                          ? formatTimeFromServer(record.clockOutTime)
-                          : <span className="text-green-600 font-medium">פעיל</span>}
-                      </td>
-                      <td className="font-mono text-gray-600">
-                        {displayDuration(record.duration)}
-                      </td>
-                      <td>
-                        <StatusBadge isClockedIn={record.isActive} />
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => { setSelectedRecord(record); setShowManualModal(true) }}
-                          className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800
-                                     font-medium transition-colors"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          עדכן
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <Pagination
-              page={page}
-              pageSize={PAGE_SIZE}
-              totalCount={history.totalCount}
-              onPageChange={handlePageChange}
-              disabled={historyLoading}
-            />
-          </>
-        )}
+        <AttendanceHistorySidebar
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          onYearChange={handleYearChange}
+          onMonthChange={handleMonthChange}
+          className="xl:sticky xl:top-6"
+        />
       </div>
     </div>
   )

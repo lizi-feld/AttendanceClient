@@ -22,6 +22,7 @@ import { Pagination } from '../../components/ui/Pagination'
 import { EditEmployeeModal } from '../../components/ui/EditEmployeeModal'
 import { ManualTimeUpdateModal } from '../../components/ui/ManualTimeUpdateModal'
 import { AddManualShiftModal } from '../../components/ui/AddManualShiftModal'
+import { AttendanceHistorySidebar } from '../../components/ui/AttendanceHistorySidebar'
 import {
   formatDateFromServer,
   formatTimeFromServer,
@@ -79,6 +80,8 @@ export function AdminEmployeeDetailPage() {
   const [showManualModal, setShowManualModal] = useState(false)
   const [showAddShiftModal, setShowAddShiftModal] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecordDto | null>(null)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -131,7 +134,14 @@ export function AdminEmployeeDetailPage() {
     [records]
   )
 
-  const hoursSummary = useMemo(() => computeHoursSummary(records), [records])
+  const filteredRecords = useMemo(() => {
+    return records.filter((record) => {
+      const recordDate = new Date(record.clockInTime)
+      return recordDate.getFullYear() === selectedYear && recordDate.getMonth() + 1 === selectedMonth
+    })
+  }, [records, selectedYear, selectedMonth])
+
+  const hoursSummary = useMemo(() => computeHoursSummary(filteredRecords), [filteredRecords])
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
@@ -143,6 +153,16 @@ export function AdminEmployeeDetailPage() {
     setPage(1)
   }
 
+  function handleYearChange(year: number) {
+    setSelectedYear(year)
+    setPage(1)
+  }
+
+  function handleMonthChange(month: number) {
+    setSelectedMonth(month)
+    setPage(1)
+  }
+
   // Client-side sort + pagination
   const sortedRecords = useMemo(() => {
     const dir = sortDir === 'asc' ? 1 : -1
@@ -151,7 +171,7 @@ export function AdminEmployeeDetailPage() {
       const parts = d.split(':').map(Number)
       return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : 0
     }
-    return [...records].sort((a, b) => {
+    return [...filteredRecords].sort((a, b) => {
       switch (sortKey) {
         case 'date':
         case 'clockIn':
@@ -169,7 +189,7 @@ export function AdminEmployeeDetailPage() {
           return 0
       }
     })
-  }, [records, sortKey, sortDir])
+  }, [filteredRecords, sortKey, sortDir])
 
   const pagedRecords = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE
@@ -293,94 +313,104 @@ export function AdminEmployeeDetailPage() {
       </div>
 
       {/* ── Attendance history ────────────────────────────────────────────── */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-5">
-          <History className="h-5 w-5 text-gray-400" />
-          <h2 className="text-lg font-semibold text-gray-800">היסטוריית נוכחות</h2>
-          {records.length > 0 && (
-            <span className="mr-auto text-xs text-gray-400 bg-gray-100 rounded-full px-2.5 py-0.5">
-              {records.length} רשומות
-            </span>
+      <div className="flex flex-col gap-6 xl:flex-row">
+        <div className="card flex-1">
+          <div className="flex items-center gap-2 mb-5">
+            <History className="h-5 w-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-800">היסטוריית נוכחות</h2>
+            {filteredRecords.length > 0 && (
+              <span className="mr-auto text-xs text-gray-400 bg-gray-100 rounded-full px-2.5 py-0.5">
+                {filteredRecords.length} רשומות
+              </span>
+            )}
+          </div>
+
+          {refreshing ? (
+            <div className="flex justify-center py-12">
+              <Spinner size="md" />
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">אין רשומות נוכחות להצגה</p>
+              <p className="text-xs mt-1">
+                הרשומות יוצגו לאחר שהעובד יתחיל לדווח נוכחות
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto -mx-6 px-6">
+                <table className="table-base">
+                  <thead>
+                    <tr>
+                      <SortTh label="תאריך"      col="date"     active={sortKey} dir={sortDir} onSort={handleSort} />
+                      <SortTh label="שעת כניסה"  col="clockIn"  active={sortKey} dir={sortDir} onSort={handleSort} />
+                      <SortTh label="שעת יציאה"  col="clockOut" active={sortKey} dir={sortDir} onSort={handleSort} />
+                      <SortTh label='סה"כ שעות'  col="duration" active={sortKey} dir={sortDir} onSort={handleSort} />
+                      <SortTh label="סטטוס"      col="status"   active={sortKey} dir={sortDir} onSort={handleSort} />
+                      <th> </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedRecords.map((record) => (
+                      <tr key={record.id}>
+                        <td className="font-medium text-gray-700">
+                          <div className="flex items-center gap-1.5">
+                            {formatDateFromServer(record.clockInTime)}
+                             {record.note && (
+                              <ManualUpdateBadge note={record.note} />
+                            )}
+                          </div>
+                        </td>
+                        <td className="font-mono text-gray-600">
+                          {formatTimeFromServer(record.clockInTime)}
+                        </td>
+                        <td className="font-mono text-gray-600">
+                          {record.clockOutTime ? (
+                            formatTimeFromServer(record.clockOutTime)
+                          ) : (
+                            <span className="text-green-600 font-medium">פעיל</span>
+                          )}
+                        </td>
+                        <td className="font-mono text-gray-600">
+                          {displayDuration(record.duration)}
+                        </td>
+                        <td>
+                          <StatusBadge isClockedIn={record.isActive} />
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => { setSelectedRecord(record); setShowManualModal(true) }}
+                            className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800
+                                       font-medium transition-colors"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            עדכן
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <Pagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                totalCount={sortedRecords.length}
+                onPageChange={setPage}
+              />
+            </>
           )}
         </div>
 
-        {refreshing ? (
-          <div className="flex justify-center py-12">
-            <Spinner size="md" />
-          </div>
-        ) : records.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p className="font-medium">אין רשומות נוכחות להצגה</p>
-            <p className="text-xs mt-1">
-              הרשומות יוצגו לאחר שהעובד יתחיל לדווח נוכחות
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto -mx-6 px-6">
-              <table className="table-base">
-                <thead>
-                  <tr>
-                    <SortTh label="תאריך"      col="date"     active={sortKey} dir={sortDir} onSort={handleSort} />
-                    <SortTh label="שעת כניסה"  col="clockIn"  active={sortKey} dir={sortDir} onSort={handleSort} />
-                    <SortTh label="שעת יציאה"  col="clockOut" active={sortKey} dir={sortDir} onSort={handleSort} />
-                    <SortTh label='סה"כ שעות'  col="duration" active={sortKey} dir={sortDir} onSort={handleSort} />
-                    <SortTh label="סטטוס"      col="status"   active={sortKey} dir={sortDir} onSort={handleSort} />
-                    <th> </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedRecords.map((record) => (
-                    <tr key={record.id}>
-                      <td className="font-medium text-gray-700">
-                        <div className="flex items-center gap-1.5">
-                          {formatDateFromServer(record.clockInTime)}
-                           {record.note && (
-                            <ManualUpdateBadge note={record.note} />
-                          )}
-                        </div>
-                      </td>
-                      <td className="font-mono text-gray-600">
-                        {formatTimeFromServer(record.clockInTime)}
-                      </td>
-                      <td className="font-mono text-gray-600">
-                        {record.clockOutTime ? (
-                          formatTimeFromServer(record.clockOutTime)
-                        ) : (
-                          <span className="text-green-600 font-medium">פעיל</span>
-                        )}
-                      </td>
-                      <td className="font-mono text-gray-600">
-                        {displayDuration(record.duration)}
-                      </td>
-                      <td>
-                        <StatusBadge isClockedIn={record.isActive} />
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => { setSelectedRecord(record); setShowManualModal(true) }}
-                          className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800
-                                     font-medium transition-colors"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          עדכן
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <Pagination
-              page={page}
-              pageSize={PAGE_SIZE}
-              totalCount={sortedRecords.length}
-              onPageChange={setPage}
-            />
-          </>
-        )}
+        <AttendanceHistorySidebar
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          onYearChange={handleYearChange}
+          onMonthChange={handleMonthChange}
+          className="xl:sticky xl:top-6"
+        />
       </div>
 
       <EditEmployeeModal
