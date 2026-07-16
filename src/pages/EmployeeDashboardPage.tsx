@@ -295,8 +295,16 @@ export function EmployeeDashboardPage() {
 
       {/* ── History table ─────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-6 xl:flex-row">
+          <AttendanceHistorySidebar
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          onYearChange={handleYearChange}
+          onMonthChange={handleMonthChange}
+          className="xl:sticky xl:top-6"
+        />
         <div className="card flex-1">
           <div className="flex items-center gap-2 mb-5">
+            
             <History className="h-5 w-5 text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-800">היסטוריית נוכחות</h2>
             <button
@@ -412,13 +420,6 @@ export function EmployeeDashboardPage() {
           )}
         </div>
 
-        <AttendanceHistorySidebar
-          selectedYear={selectedYear}
-          selectedMonth={selectedMonth}
-          onYearChange={handleYearChange}
-          onMonthChange={handleMonthChange}
-          className="xl:sticky xl:top-6"
-        />
       </div>
     </div>
   )
