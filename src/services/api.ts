@@ -78,8 +78,8 @@ api.interceptors.response.use(
 
     try {
       const body: RefreshTokenRequestDto = {
-        AccessToken: tokenStore.accessToken,
-        RefreshToken: tokenStore.refreshToken,
+        accessToken: tokenStore.accessToken,
+        refreshToken: tokenStore.refreshToken,
       }
       // Use a plain axios call (not the intercepted instance) to avoid loops
       const { data } = await axios.post<RefreshTokenResponseDto>(

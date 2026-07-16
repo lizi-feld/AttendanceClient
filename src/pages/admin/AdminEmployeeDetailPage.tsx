@@ -11,16 +11,12 @@ import {
   RefreshCw,
   Pencil,
   Plus,
-  ChevronUp,
-  ChevronDown,
-  ArrowUpDown,
 } from 'lucide-react'
 import { adminService } from '../../services/adminService'
+import { attendanceService } from '../../services/attendanceService'
 import { FullPageSpinner, Spinner } from '../../components/ui/Spinner'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { Pagination } from '../../components/ui/Pagination'
 import { EditEmployeeModal } from '../../components/ui/EditEmployeeModal'
-import { ManualTimeUpdateModal } from '../../components/ui/ManualTimeUpdateModal'
 import { AddManualShiftModal } from '../../components/ui/AddManualShiftModal'
 import { AttendanceHistorySidebar } from '../../components/ui/AttendanceHistorySidebar'
 import {
@@ -29,59 +25,22 @@ import {
   displayDuration,
   computeHoursSummary,
 } from '../../utils/formatters'
-import type { AttendanceRecordDto, EmployeeDetailsDto } from '../../types'
-
-const PAGE_SIZE = 10
-
-type SortKey = 'date' | 'clockIn' | 'clockOut' | 'duration' | 'status'
-type SortDir = 'asc' | 'desc'
-
-function SortTh({
-  label, col, active, dir, onSort,
-}: {
-  label: string
-  col: SortKey
-  active: SortKey
-  dir: SortDir
-  onSort: (k: SortKey) => void
-}) {
-  const isActive = col === active
-  return (
-    <th>
-      <button
-        onClick={() => onSort(col)}
-        className="inline-flex items-center gap-1 group select-none hover:text-primary-600 transition-colors"
-      >
-        {label}
-        {isActive ? (
-          dir === 'asc'
-            ? <ChevronUp className="h-3.5 w-3.5 text-primary-500" />
-            : <ChevronDown className="h-3.5 w-3.5 text-primary-500" />
-        ) : (
-          <ArrowUpDown className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-400" />
-        )}
-      </button>
-    </th>
-  )
-}
+import type { AttendanceHistoryMonthDto, AttendanceRecordDto, EmployeeDetailsDto } from '../../types'
 
 export function AdminEmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
   const [employee, setEmployee] = useState<EmployeeDetailsDto | null>(null)
-  const [page, setPage] = useState(1)
-  const [sortKey, setSortKey] = useState<SortKey>('date')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showManualModal, setShowManualModal] = useState(false)
   const [showAddShiftModal, setShowAddShiftModal] = useState(false)
-  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecordDto | null>(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [monthHistory, setMonthHistory] = useState<AttendanceHistoryMonthDto | null>(null)
+  const [monthHistoryLoading, setMonthHistoryLoading] = useState(false)
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -143,58 +102,32 @@ export function AdminEmployeeDetailPage() {
 
   const hoursSummary = useMemo(() => computeHoursSummary(filteredRecords), [filteredRecords])
 
-  function handleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir('desc')
+  async function loadMonthHistory(year = selectedYear, month = selectedMonth) {
+    if (!employee?.id) return
+    if (mountedRef.current) setMonthHistoryLoading(true)
+
+    try {
+      const data = await attendanceService.getHistoryCalendar(year, month, employee.id)
+      if (mountedRef.current) setMonthHistory(data)
+    } catch {
+      if (mountedRef.current) setMonthHistory(null)
+    } finally {
+      if (mountedRef.current) setMonthHistoryLoading(false)
     }
-    setPage(1)
   }
+
+  useEffect(() => {
+    void loadMonthHistory(selectedYear, selectedMonth)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee?.id, selectedYear, selectedMonth])
 
   function handleYearChange(year: number) {
     setSelectedYear(year)
-    setPage(1)
   }
 
   function handleMonthChange(month: number) {
     setSelectedMonth(month)
-    setPage(1)
   }
-
-  // Client-side sort + pagination
-  const sortedRecords = useMemo(() => {
-    const dir = sortDir === 'asc' ? 1 : -1
-    const parseDuration = (d: string | null) => {
-      if (!d) return -1
-      const parts = d.split(':').map(Number)
-      return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : 0
-    }
-    return [...filteredRecords].sort((a, b) => {
-      switch (sortKey) {
-        case 'date':
-        case 'clockIn':
-          return dir * a.clockInTime.localeCompare(b.clockInTime)
-        case 'clockOut':
-          if (!a.clockOutTime && !b.clockOutTime) return 0
-          if (!a.clockOutTime) return 1
-          if (!b.clockOutTime) return -1
-          return dir * a.clockOutTime.localeCompare(b.clockOutTime)
-        case 'duration':
-          return dir * (parseDuration(a.duration) - parseDuration(b.duration))
-        case 'status':
-          return dir * ((a.isActive ? 1 : 0) - (b.isActive ? 1 : 0))
-        default:
-          return 0
-      }
-    })
-  }, [filteredRecords, sortKey, sortDir])
-
-  const pagedRecords = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE
-    return sortedRecords.slice(start, start + PAGE_SIZE)
-  }, [sortedRecords, page])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -325,81 +258,102 @@ export function AdminEmployeeDetailPage() {
             )}
           </div>
 
-          {refreshing ? (
+          {monthHistoryLoading ? (
             <div className="flex justify-center py-12">
               <Spinner size="md" />
             </div>
-          ) : filteredRecords.length === 0 ? (
+          ) : !monthHistory || monthHistory.days.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">אין רשומות נוכחות להצגה</p>
-              <p className="text-xs mt-1">
-                הרשומות יוצגו לאחר שהעובד יתחיל לדווח נוכחות
-              </p>
+              <p className="font-medium">אין נתונים להצגה בחודש זה</p>
             </div>
           ) : (
             <>
               <div className="overflow-x-auto -mx-6 px-6">
-                <table className="table-base">
+                <table className="table-base min-w-[980px]">
                   <thead>
                     <tr>
-                      <SortTh label="תאריך"      col="date"     active={sortKey} dir={sortDir} onSort={handleSort} />
-                      <SortTh label="שעת כניסה"  col="clockIn"  active={sortKey} dir={sortDir} onSort={handleSort} />
-                      <SortTh label="שעת יציאה"  col="clockOut" active={sortKey} dir={sortDir} onSort={handleSort} />
-                      <SortTh label='סה"כ שעות'  col="duration" active={sortKey} dir={sortDir} onSort={handleSort} />
-                      <SortTh label="סטטוס"      col="status"   active={sortKey} dir={sortDir} onSort={handleSort} />
-                      <th> </th>
+                      <th>תאריך + יום</th>
+                      <th>סוג יום</th>
+                      <th>כניסה</th>
+                      <th>יציאה</th>
+                      <th>סה"כ</th>
+                      <th>פער/עודף</th>
+                      <th>הסבר</th>
+                      <th>פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {pagedRecords.map((record) => (
-                      <tr key={record.id}>
-                        <td className="font-medium text-gray-700">
-                          <div className="flex items-center gap-1.5">
-                            {formatDateFromServer(record.clockInTime)}
-                             {record.note && (
-                              <ManualUpdateBadge note={record.note} />
-                            )}
-                          </div>
-                        </td>
-                        <td className="font-mono text-gray-600">
-                          {formatTimeFromServer(record.clockInTime)}
-                        </td>
-                        <td className="font-mono text-gray-600">
-                          {record.clockOutTime ? (
-                            formatTimeFromServer(record.clockOutTime)
-                          ) : (
-                            <span className="text-green-600 font-medium">פעיל</span>
-                          )}
-                        </td>
-                        <td className="font-mono text-gray-600">
-                          {displayDuration(record.duration)}
-                        </td>
-                        <td>
-                          <StatusBadge isClockedIn={record.isActive} />
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => { setSelectedRecord(record); setShowManualModal(true) }}
-                            className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800
-                                       font-medium transition-colors"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            עדכן
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {monthHistory.days.map((day) => {
+                      const rowClassName = day.hasAlert
+                        ? 'border-l-4 border-red-400 bg-red-50/70'
+                        : day.isWeekend
+                          ? 'border-l-4 border-amber-400 bg-amber-50/70'
+                          : 'border-l-4 border-blue-500 bg-white'
+
+                      return (
+                        <tr key={day.date} className={rowClassName}>
+                          <td className="min-w-[220px] py-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`h-2.5 w-2.5 rounded-full ${day.hasAttendanceRecord ? 'bg-blue-600' : day.isWeekend ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                              <div>
+                                <div className="font-semibold text-gray-800">{day.displayDateLabel}</div>
+                                <div className="text-xs text-gray-500">{day.dayLabel}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${day.isWeekend ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}`}>
+                              {day.dayTypeLabel}
+                            </span>
+                          </td>
+                          <td className="py-4 font-mono text-sm">
+                            {day.clockInTime ? formatTimeFromServer(day.clockInTime) : '—'}
+                          </td>
+                          <td className="py-4 font-mono text-sm">
+                            {day.clockOutTime ? formatTimeFromServer(day.clockOutTime) : '—'}
+                          </td>
+                          <td className="py-4 font-mono text-sm">
+                            {day.totalWorkedHours ? displayDuration(day.totalWorkedHours) : '—'}
+                          </td>
+                          <td className="py-4">
+                            <div className={`flex items-center gap-1.5 text-sm ${day.hasDeficit ? 'text-red-600' : 'text-emerald-600'}`}>
+                              {day.hasAlert && <AlertCircle className="h-4 w-4" />}
+                              <span>{day.displayBalance ?? '—'}</span>
+                            </div>
+                            {day.alertText && <div className="mt-1 text-xs text-red-600">{day.alertText}</div>}
+                          </td>
+                          <td className="py-4 max-w-[220px] text-sm text-gray-600">
+                            {day.explanation ?? '—'}
+                          </td>
+                          <td className="py-4 text-left">
+                            <button
+                              type="button"
+                              onClick={() => setShowAddShiftModal(true)}
+                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${day.isWeekend ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
+                            >
+                              {day.isWeekend ? <Plus className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                              {day.isWeekend ? 'הוסף דיווח' : 'ערוך'}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
 
-              <Pagination
-                page={page}
-                pageSize={PAGE_SIZE}
-                totalCount={sortedRecords.length}
-                onPageChange={setPage}
-              />
+              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 shadow-inner">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-4">
+                    <span><span className="text-slate-400">סה"כ שעות:</span> {monthHistory.summary.totalWorkedHours}</span>
+                    <span><span className="text-slate-400">שעות רגילות:</span> {monthHistory.summary.regularHours}</span>
+                    <span><span className="text-slate-400">פער:</span> {monthHistory.summary.deficitHours}</span>
+                    <span><span className="text-slate-400">הפסקות:</span> {monthHistory.summary.breakHours}</span>
+                  </div>
+                  <span className="text-slate-400">הערות: {monthHistory.summary.notesCount}</span>
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -425,17 +379,6 @@ export function AdminEmployeeDetailPage() {
         }}
       />
 
-      {selectedRecord && (
-        <ManualTimeUpdateModal
-          isOpen={showManualModal}
-          onClose={() => setShowManualModal(false)}
-          recordId={selectedRecord.id}
-          initialClockInTime={selectedRecord.clockInTime}
-          initialClockOutTime={selectedRecord.clockOutTime}
-          onSuccess={() => loadEmployee(false)}
-        />
-      )}
-
       <AddManualShiftModal
         isOpen={showAddShiftModal}
         onClose={() => setShowAddShiftModal(false)}
@@ -443,19 +386,6 @@ export function AdminEmployeeDetailPage() {
         onSuccess={() => loadEmployee(false)}
       />
     </div>
-  )
-}
-
-// ── Manual update badge ───────────────────────────────────────────────────────
-
-function ManualUpdateBadge({ note }: { note?: string | null }) {
-  return (
-    <span
-      title={note ? `עודכן ידנית\n${note}` : 'עודכן ידנית'}
-      className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-100 text-amber-600 cursor-help flex-shrink-0"
-    >
-      <Pencil className="h-2.5 w-2.5" />
-    </span>
   )
 }
 

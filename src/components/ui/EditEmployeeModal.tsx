@@ -57,9 +57,9 @@ export function EditEmployeeModal({
     setSubmitError(null)
     try {
       const updated = await authService.updateEmployee(employeeId, {
-        FullName: data.fullName,
-        Username: data.username,
-        ...(data.password ? { Password: data.password } : {}),
+        fullName: data.fullName,
+        username: data.username,
+        ...(data.password ? { password: data.password } : {}),
       })
       onSuccess(updated)
       onClose()

@@ -52,6 +52,48 @@ export interface AttendanceRecordDto {
   note?: string | null
 }
 
+export interface AttendanceHistoryMonthSummaryDto {
+  totalWorkedHours: string
+  regularHours: string
+  deficitHours: string
+  breakHours: string
+  notesCount: number
+}
+
+export interface AttendanceHistoryDayDto {
+  date: string
+  dayNumber: number
+  dayOfWeek: string
+  displayDateLabel: string
+  dayLabel: string
+  dayTypeLabel: string
+  hasAttendanceRecord: boolean
+  isWeekend: boolean
+  isFutureDate: boolean
+  isDisabled: boolean
+  isEditable: boolean
+  isMonthClosed: boolean
+  canClockIn: boolean
+  canClockOut: boolean
+  status: string
+  clockInTime: string | null
+  clockOutTime: string | null
+  totalWorkedHours: string | null
+  rowType: string
+  hasAlert: boolean
+  hasDeficit: boolean
+  alertText: string | null
+  displayBalance: string | null
+  explanation: string | null
+}
+
+export interface AttendanceHistoryMonthDto {
+  year: number
+  month: number
+  summary: AttendanceHistoryMonthSummaryDto
+  days: AttendanceHistoryDayDto[]
+}
+
 export interface CurrentAttendanceStatusDto {
   isClockedIn: boolean
   activeRecordId: number | null

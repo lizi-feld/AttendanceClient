@@ -8,16 +8,14 @@ import {
   AlertCircle,
   History,
   Settings,
-  Pencil,
   Plus,
+  Pencil,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { attendanceService } from '../services/attendanceService'
 import { Spinner, FullPageSpinner } from '../components/ui/Spinner'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import { Pagination } from '../components/ui/Pagination'
 import { EditEmployeeModal } from '../components/ui/EditEmployeeModal'
-import { ManualTimeUpdateModal } from '../components/ui/ManualTimeUpdateModal'
 import { AddManualShiftModal } from '../components/ui/AddManualShiftModal'
 import { AttendanceHistorySidebar } from '../components/ui/AttendanceHistorySidebar'
 import {
@@ -26,37 +24,20 @@ import {
   displayDuration,
 } from '../utils/formatters'
 import type {
+  AttendanceHistoryMonthDto,
   CurrentAttendanceStatusDto,
-  PagedResult,
-  AttendanceRecordDto,
   WorkedHoursDto,
 } from '../types'
-
-const PAGE_SIZE = 10
-
-function ManualUpdateBadge({ note }: { note?: string | null }) {
-  return (
-    <span
-      title={note ? `עודכן ידנית\n${note}` : 'עודכן ידנית'}
-      className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-100 text-amber-600 cursor-help flex-shrink-0"
-    >
-      <Pencil className="h-2.5 w-2.5" />
-    </span>
-  )
-}
 
 export function EmployeeDashboardPage() {
   const { user, updateCurrentEmployee } = useAuth()
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showManualModal, setShowManualModal] = useState(false)
   const [showAddShiftModal, setShowAddShiftModal] = useState(false)
-  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecordDto | null>(null)
 
   const [status, setStatus] = useState<CurrentAttendanceStatusDto | null>(null)
   const [weeklyHours, setWeeklyHours] = useState<WorkedHoursDto | null>(null)
   const [monthlyHours, setMonthlyHours] = useState<WorkedHoursDto | null>(null)
-  const [history, setHistory] = useState<PagedResult<AttendanceRecordDto> | null>(null)
-  const [page, setPage] = useState(1)
+  const [history, setHistory] = useState<AttendanceHistoryMonthDto | null>(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 
@@ -91,14 +72,14 @@ export function EmployeeDashboardPage() {
     }
   }
 
-  async function fetchHistory(pageNum: number, year = selectedYear, month = selectedMonth) {
+  async function fetchHistory(year = selectedYear, month = selectedMonth) {
     if (mountedRef.current) {
       setHistoryLoading(true)
       setHistoryError(null)
     }
 
     try {
-      const data = await attendanceService.getHistory(pageNum, PAGE_SIZE, year, month)
+      const data = await attendanceService.getHistoryCalendar(year, month)
       if (mountedRef.current) setHistory(data)
     } catch {
       if (mountedRef.current) {
@@ -114,7 +95,7 @@ export function EmployeeDashboardPage() {
   useEffect(() => {
     setInitLoading(true)
     setInitError(null)
-    Promise.all([fetchStatus(), fetchHours(), fetchHistory(1, selectedYear, selectedMonth)])
+    Promise.all([fetchStatus(), fetchHours(), fetchHistory(selectedYear, selectedMonth)])
       .catch(() => {
         if (mountedRef.current) setInitError('שגיאה בטעינת הנתונים. אנא רענן את הדף.')
       })
@@ -140,8 +121,7 @@ export function EmployeeDashboardPage() {
     setActionError(null)
     try {
       await attendanceService.clockIn()
-      await Promise.all([fetchStatus(), fetchHours(), fetchHistory(1, selectedYear, selectedMonth)])
-      setPage(1)
+      await Promise.all([fetchStatus(), fetchHours(), fetchHistory(selectedYear, selectedMonth)])
     } catch {
       setActionError('שגיאה בביצוע כניסה למשמרת. אנא נסה שוב.')
     } finally {
@@ -154,8 +134,7 @@ export function EmployeeDashboardPage() {
     setActionError(null)
     try {
       await attendanceService.clockOut()
-      await Promise.all([fetchStatus(), fetchHours(), fetchHistory(1, selectedYear, selectedMonth)])
-      setPage(1)
+      await Promise.all([fetchStatus(), fetchHours(), fetchHistory(selectedYear, selectedMonth)])
     } catch {
       setActionError('שגיאה בביצוע יציאה ממשמרת. אנא נסה שוב.')
     } finally {
@@ -163,21 +142,14 @@ export function EmployeeDashboardPage() {
     }
   }
 
-  function handlePageChange(newPage: number) {
-    setPage(newPage)
-    void fetchHistory(newPage, selectedYear, selectedMonth)
-  }
-
   function handleYearChange(year: number) {
     setSelectedYear(year)
-    setPage(1)
-    void fetchHistory(1, year, selectedMonth)
+    void fetchHistory(year, selectedMonth)
   }
 
   function handleMonthChange(month: number) {
     setSelectedMonth(month)
-    setPage(1)
-    void fetchHistory(1, selectedYear, month)
+    void fetchHistory(selectedYear, month)
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -315,21 +287,10 @@ export function EmployeeDashboardPage() {
         />
       )}
 
-      {selectedRecord && (
-        <ManualTimeUpdateModal
-          isOpen={showManualModal}
-          onClose={() => setShowManualModal(false)}
-          recordId={selectedRecord.id}
-          initialClockInTime={selectedRecord.clockInTime}
-          initialClockOutTime={selectedRecord.clockOutTime}
-          onSuccess={() => { void fetchHistory(page, selectedYear, selectedMonth); void fetchHours() }}
-        />
-      )}
-
       <AddManualShiftModal
         isOpen={showAddShiftModal}
         onClose={() => setShowAddShiftModal(false)}
-        onSuccess={() => { void fetchHistory(page, selectedYear, selectedMonth); void fetchHours() }}
+        onSuccess={() => { void fetchHistory(selectedYear, selectedMonth); void fetchHours() }}
       />
 
       {/* ── History table ─────────────────────────────────────────────────── */}
@@ -355,7 +316,7 @@ export function EmployeeDashboardPage() {
             <div className="flex justify-center py-12">
               <Spinner size="md" />
             </div>
-          ) : !history || history.items?.length === 0 ? (
+          ) : !history || history.days?.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
               <p>אין רשומות נוכחות להצגה</p>
@@ -363,65 +324,90 @@ export function EmployeeDashboardPage() {
           ) : (
             <>
               <div className="overflow-x-auto -mx-6 px-6">
-                <table className="table-base">
+                <table className="table-base min-w-[980px]">
                   <thead>
                     <tr>
-                      <th>תאריך</th>
-                      <th>שעת כניסה</th>
-                      <th>שעת יציאה</th>
-                      <th>סה"כ שעות</th>
-                      <th>סטטוס</th>
-                      <th> </th>
+                      <th>תאריך + יום</th>
+                      <th>סוג יום</th>
+                      <th>כניסה</th>
+                      <th>יציאה</th>
+                      <th>סה"כ</th>
+                      <th>פער/עודף</th>
+                      <th>הסבר</th>
+                      <th>פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {history.items?.map((record) => (
-                      <tr key={record.id}>
-                        <td className="font-medium text-gray-700">
-                          <div className="flex items-center gap-1.5">
-                            {formatDateFromServer(record.clockInTime)}
-                            {record.note && (
-                              <ManualUpdateBadge note={record.note} />
-                            )}
-                          </div>
-                        </td>
-                        <td className="font-mono text-gray-600">
-                          {formatTimeFromServer(record.clockInTime)}
-                        </td>
-                        <td className="font-mono text-gray-600">
-                          {record.clockOutTime
-                            ? formatTimeFromServer(record.clockOutTime)
-                            : <span className="text-green-600 font-medium">פעיל</span>}
-                        </td>
-                        <td className="font-mono text-gray-600">
-                          {displayDuration(record.duration)}
-                        </td>
-                        <td>
-                          <StatusBadge isClockedIn={record.isActive} />
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => { setSelectedRecord(record); setShowManualModal(true) }}
-                            className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800
-                                       font-medium transition-colors"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            עדכן
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {history.days?.map((day) => {
+                      const rowClassName = day.hasAlert
+                        ? 'border-l-4 border-red-400 bg-red-50/70'
+                        : day.isWeekend
+                          ? 'border-l-4 border-amber-400 bg-amber-50/70'
+                          : 'border-l-4 border-blue-500 bg-white'
+
+                      return (
+                        <tr key={day.date} className={rowClassName}>
+                          <td className="min-w-[220px] py-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`h-2.5 w-2.5 rounded-full ${day.hasAttendanceRecord ? 'bg-blue-600' : day.isWeekend ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                              <div>
+                                <div className="font-semibold text-gray-800">{day.displayDateLabel}</div>
+                                <div className="text-xs text-gray-500">{day.dayLabel}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${day.isWeekend ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}`}>
+                              {day.dayTypeLabel}
+                            </span>
+                          </td>
+                          <td className="py-4 font-mono text-sm">
+                            {day.clockInTime ? formatTimeFromServer(day.clockInTime) : '—'}
+                          </td>
+                          <td className="py-4 font-mono text-sm">
+                            {day.clockOutTime ? formatTimeFromServer(day.clockOutTime) : '—'}
+                          </td>
+                          <td className="py-4 font-mono text-sm">
+                            {day.totalWorkedHours ? displayDuration(day.totalWorkedHours) : '—'}
+                          </td>
+                          <td className="py-4">
+                            <div className={`flex items-center gap-1.5 text-sm ${day.hasDeficit ? 'text-red-600' : 'text-emerald-600'}`}>
+                              {day.hasAlert && <AlertCircle className="h-4 w-4" />}
+                              <span>{day.displayBalance ?? '—'}</span>
+                            </div>
+                            {day.alertText && <div className="mt-1 text-xs text-red-600">{day.alertText}</div>}
+                          </td>
+                          <td className="py-4 max-w-[220px] text-sm text-gray-600">
+                            {day.explanation ?? '—'}
+                          </td>
+                          <td className="py-4 text-left">
+                            <button
+                              type="button"
+                              onClick={() => setShowAddShiftModal(true)}
+                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${day.isWeekend ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
+                            >
+                              {day.isWeekend ? <Plus className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                              {day.isWeekend ? 'הוסף דיווח' : 'ערוך'}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
 
-              <Pagination
-                page={page}
-                pageSize={PAGE_SIZE}
-                totalCount={history.totalCount}
-                onPageChange={handlePageChange}
-                disabled={historyLoading}
-              />
+              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 shadow-inner">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-4">
+                    <span><span className="text-slate-400">סה"כ שעות:</span> {history.summary.totalWorkedHours}</span>
+                    <span><span className="text-slate-400">שעות רגילות:</span> {history.summary.regularHours}</span>
+                    <span><span className="text-slate-400">פער:</span> {history.summary.deficitHours}</span>
+                    <span><span className="text-slate-400">הפסקות:</span> {history.summary.breakHours}</span>
+                  </div>
+                  <span className="text-slate-400">הערות: {history.summary.notesCount}</span>
+                </div>
+              </div>
             </>
           )}
         </div>

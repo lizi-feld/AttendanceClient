@@ -1,5 +1,6 @@
 import api from './api'
 import type {
+  AttendanceHistoryMonthDto,
   AttendanceRecordDto,
   CurrentAttendanceStatusDto,
   ManualAddShiftRequest,
@@ -28,6 +29,13 @@ export const attendanceService = {
       .get<PagedResult<AttendanceRecordDto>>('/api/attendance/history', { params })
       .then((r) => r.data)
   },
+
+  getHistoryCalendar: (year: number, month: number, employeeId?: number) =>
+    api
+      .get<AttendanceHistoryMonthDto>('/api/attendance/history/calendar', {
+        params: { year, month, employeeId },
+      })
+      .then((r) => r.data),
 
   getWeeklyHours: () =>
     api.get<WorkedHoursDto>('/api/attendance/weekly-hours').then((r) => r.data),

@@ -34,7 +34,7 @@ export function LoginPage() {
 
     setSubmitting(true)
     try {
-      await login({ Username: username.trim(), Password: password })
+      await login({ username: username.trim(), password })
       // Navigation is handled inside AuthContext.login()
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string; title?: string }>
