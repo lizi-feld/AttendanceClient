@@ -9,7 +9,7 @@ You are working on a localized (RTL Hebrew) Time and Attendance system.
 ## 2. Core Architectural Rules (CRITICAL)
 
 ### A. Time Handling (Single Source of Truth)
-* **Rule:** The Backend (`ExternalTimeProvider` via `Europe/Zurich`) is the ONLY source of truth for time. 
+* **Rule:** The Backend (`ExternalTimeProvider` via `Asia/Jerusalem`) is the ONLY source of truth for time. 
 * **Frontend Constraints:** NEVER use the browser's `new Date()` for business logic, clock-ins, or displaying static timestamps.
 * **Live Clocks:** If a live clock is required, it must fetch the server time ONCE on mount, calculate the offset against the local machine, and tick using that offset. If the server is unreachable, the clock must return `null` or `--:--:--` (never fall back to local browser time).
 

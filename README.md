@@ -12,9 +12,9 @@ This is the backend API for the Time and Attendance System, built with **ASP.NET
 
 ## Core Architecture & Business Rules
 
-### 1. Single Source of Truth for Time (Europe/Zurich)
+### 1. Single Source of Truth for Time (Asia/Jerusalem)
 To prevent time-tampering, the system **never** relies on the client's local time or the host server's default clock. 
-All clock-in and clock-out events are stamped using an external time provider (`TimeAPI.io`) specifically set to the `Europe/Zurich` timezone. 
+All clock-in and clock-out events are stamped using an external time provider (`TimeAPI.io`) specifically set to the `Asia/Jerusalem` timezone. 
 
 ### 2. Network Resilience with Polly
 Fetching time from an external API is critical. We wrapped the HTTP calls using **Polly Resilience Pipelines**. 
