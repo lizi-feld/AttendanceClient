@@ -29,6 +29,7 @@ export interface EmployeeDto {
   id: number
   username: string
   fullName: string
+  dailyWorkHours: number
   role: string
   createdAt: string
   attendanceRecords?: AttendanceRecordDto[]
@@ -138,6 +139,7 @@ export interface AddEmployeeRequest {
   fullName: string
   username: string
   password: string
+  dailyWorkHours: number
   role: number
 }
 
@@ -145,6 +147,7 @@ export interface UpdateEmployeeRequest {
   fullName: string
   username: string
   password?: string
+  dailyWorkHours?: number
 }
 
 export interface ManualAttendanceUpdateRequest {

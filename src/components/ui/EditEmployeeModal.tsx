@@ -15,6 +15,8 @@ interface Props {
   employeeId: number
   initialFullName: string
   initialUsername: string
+  initialDailyWorkHours: number
+  initialRole: string
   onSuccess: (updated: EmployeeDto) => void
 }
 
@@ -24,6 +26,8 @@ export function EditEmployeeModal({
   employeeId,
   initialFullName,
   initialUsername,
+  initialDailyWorkHours,
+  initialRole,
   onSuccess,
 }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -35,23 +39,24 @@ export function EditEmployeeModal({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<EditEmployeeFormData>({
-    resolver: zodResolver(editEmployeeSchema),
+    resolver: zodResolver(editEmployeeSchema as never) as never,
     mode: 'onTouched',
-    defaultValues: { fullName: initialFullName, username: initialUsername, password: '' },
+    defaultValues: { fullName: initialFullName, username: initialUsername, password: '',dailyWorkHours: initialDailyWorkHours,
+  role: (initialRole as 'Employee' | 'Admin') || 'Employee',},
   })
-
+  const selectedRole = watch('role');
   const passwordValue = watch('password')
-
   // Accurate real-time validity for the submit button (independent of touch state)
   const isFormValid = editEmployeeSchema.safeParse(watch()).success
 
   // Re-seed form each time the modal opens or initial values change
   useEffect(() => {
     if (isOpen) {
-      reset({ fullName: initialFullName, username: initialUsername, password: '' })
+      reset({ fullName: initialFullName, username: initialUsername, password: '', dailyWorkHours: initialDailyWorkHours,
+  role: (initialRole as 'Employee' | 'Admin') || 'Employee', })
       setSubmitError(null)
     }
-  }, [isOpen, initialFullName, initialUsername, reset])
+  }, [isOpen, initialFullName, initialUsername, initialDailyWorkHours, reset])
 
   async function onSubmit(data: EditEmployeeFormData) {
     setSubmitError(null)
@@ -60,6 +65,7 @@ export function EditEmployeeModal({
         fullName: data.fullName,
         username: data.username,
         ...(data.password ? { password: data.password } : {}),
+        dailyWorkHours: data.dailyWorkHours,
       })
       onSuccess(updated)
       onClose()
@@ -97,6 +103,22 @@ export function EditEmployeeModal({
             error={errors.username?.message}
             hint="אותיות אנגליות, ספרות, נקודות, מקפים וקווים תחתיים בלבד · עד 100 תווים"
           />
+        </div>
+
+        {/* ── Daily Work Hours ─────────────────────────────────────────────── */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">שעות עבודה יומיות</label>
+          <input
+            type="number"
+            step="0.5"
+            min="0.5"
+            max="24"
+            {...register('dailyWorkHours')}
+            disabled={selectedRole == 'Employee'}
+            placeholder="8"
+            className={inputCls(Boolean(errors.dailyWorkHours))}
+          />
+          <Hint error={errors.dailyWorkHours?.message} hint="מספר בין 0.5 ל-24" />
         </div>
 
         {/* ── New Password ─────────────────────────────────────────────────── */}

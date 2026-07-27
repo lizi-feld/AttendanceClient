@@ -280,6 +280,8 @@ export function EmployeeDashboardPage() {
           employeeId={user.employee.id}
           initialFullName={user.employee.fullName}
           initialUsername={user.employee.username}
+          initialDailyWorkHours={user.employee.dailyWorkHours}
+          initialRole={user.employee.role}  
           onSuccess={(updated) => {
             updateCurrentEmployee(updated)
             setShowEditModal(false)

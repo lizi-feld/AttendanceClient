@@ -24,9 +24,9 @@ export function AddEmployeeModal({ isOpen, onClose, onSuccess }: Props) {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<AddEmployeeFormData>({
-    resolver: zodResolver(addEmployeeSchema),
+    resolver: zodResolver(addEmployeeSchema as never) as never,
     mode: 'onTouched',
-    defaultValues: { fullName: '', username: '', password: '', role: undefined },
+    defaultValues: { fullName: '', username: '', password: '', dailyWorkHours: 8, role: undefined },
   })
 
   const passwordValue = watch('password') ?? ''
@@ -36,7 +36,7 @@ export function AddEmployeeModal({ isOpen, onClose, onSuccess }: Props) {
 
   useEffect(() => {
     if (isOpen) {
-      reset({ fullName: '', username: '', password: '', role: undefined })
+      reset({ fullName: '', username: '', password: '', dailyWorkHours: 8, role: undefined })
       setSubmitError(null)
     }
   }, [isOpen, reset])
@@ -50,6 +50,7 @@ export function AddEmployeeModal({ isOpen, onClose, onSuccess }: Props) {
         fullName: payloadToSend.fullName,
         username: payloadToSend.username,
         password: payloadToSend.password,
+        dailyWorkHours: payloadToSend.dailyWorkHours,
         role: payloadToSend.role,
       })
       onSuccess()
@@ -90,6 +91,21 @@ export function AddEmployeeModal({ isOpen, onClose, onSuccess }: Props) {
             error={errors.username?.message}
             hint="אותיות אנגליות, ספרות, נקודות, מקפים וקווים תחתיים בלבד · עד 100 תווים"
           />
+        </div>
+
+        {/* ── Daily Work Hours ─────────────────────────────────────────────── */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">שעות עבודה יומיות</label>
+          <input
+            type="number"
+            step="0.5"
+            min="0.5"
+            max="24"
+            {...register('dailyWorkHours')}
+            placeholder="8"
+            className={inputCls(Boolean(errors.dailyWorkHours))}
+          />
+          <Hint error={errors.dailyWorkHours?.message} hint="מספר בין 0.5 ל-24" />
         </div>
 
         {/* ── Password ─────────────────────────────────────────────────────── */}

@@ -28,6 +28,11 @@ const passwordRequiredSchema = z
   .regex(/[\W_]/, 'הסיסמה חייבת להכיל לפחות תו מיוחד אחד')
 
 // Optional password (edit form) — empty string means "keep existing"
+const dailyWorkHoursSchema = z.coerce
+  .number()
+  .gt(0, 'שעות עבודה יומיות חייבות להיות גדול מ-0')
+  .lte(24, 'שעות עבודה יומיות לא יכולות לעלות על 24')
+
 const passwordOptionalSchema = z.string().superRefine((val, ctx) => {
   if (!val) return
   if (val.length < 8) {
@@ -57,21 +62,27 @@ const passwordOptionalSchema = z.string().superRefine((val, ctx) => {
 
 // ─── Form schemas ─────────────────────────────────────────────────────────────
 
-export const addEmployeeSchema = z.object({
+const addEmployeeSchema = z.object({
   fullName: fullNameSchema,
   username: usernameSchema,
   password: passwordRequiredSchema,
+  dailyWorkHours: dailyWorkHoursSchema,
   role: z.enum(['Employee', 'Admin'] as const, 'יש לבחור תפקיד תקין'),
 })
 
-export const editEmployeeSchema = z.object({
+const editEmployeeSchema = z.object({
   fullName: fullNameSchema,
   username: usernameSchema,
   password: passwordOptionalSchema,
+  dailyWorkHours: dailyWorkHoursSchema,
+  role: z.enum(['Employee', 'Admin'] as const, 'יש לבחור תפקיד תקין'),
+
 })
 
 export type AddEmployeeFormData = z.infer<typeof addEmployeeSchema>
 export type EditEmployeeFormData = z.infer<typeof editEmployeeSchema>
+
+export { addEmployeeSchema, editEmployeeSchema }
 
 // ─── Password checklist config ────────────────────────────────────────────────
 

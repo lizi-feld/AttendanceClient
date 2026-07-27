@@ -373,6 +373,8 @@ export function AdminEmployeeDetailPage() {
         employeeId={employee.id}
         initialFullName={employee.fullName}
         initialUsername={employee.username}
+        initialDailyWorkHours={employee.dailyWorkHours}
+        initialRole={employee.role}
         onSuccess={(updated) => {
           setEmployee((prev) => prev ? { ...prev, ...updated } : prev)
           setShowEditModal(false)
