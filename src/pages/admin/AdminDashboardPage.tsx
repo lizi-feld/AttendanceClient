@@ -224,14 +224,14 @@ export function AdminDashboardPage() {
         <SummaryCard
           icon={<UserCheck className="h-6 w-6 text-green-600" />}
           bgColor="bg-green-50"
-          label="במשמרת כעת"
+          label="בעבודה כעת"
           value={dashboard?.clockedInNow ?? 0}
           highlight="green"
         />
         <SummaryCard
           icon={<UserX className="h-6 w-6 text-gray-400" />}
           bgColor="bg-gray-50"
-          label="לא במשמרת"
+          label="לא בעבודה"
           value={offShift}
         />
       </div>

@@ -1,11 +1,14 @@
 import api from './api'
 import type {
+  AbsenceRecordDto,
   AttendanceHistoryMonthDto,
   AttendanceRecordDto,
   CurrentAttendanceStatusDto,
   ManualAddShiftRequest,
   ManualAttendanceUpdateRequest,
   PagedResult,
+  ReportAbsenceRequest,
+  UploadDocumentResponseDto,
   WorkedHoursDto,
 } from '../types'
 
@@ -48,4 +51,28 @@ export const attendanceService = {
 
   manualAddShift: (data: ManualAddShiftRequest) =>
     api.post<AttendanceRecordDto>('/api/attendance/manual-add', data).then((r) => r.data),
+
+  uploadDocument: (file: File) => {
+    debugger
+    const formData = new FormData()
+    formData.append('file', file)
+    // Do not set a Content-Type header here — axios detects FormData and lets the
+    // browser generate the multipart boundary itself.
+    return api
+      .post<UploadDocumentResponseDto>('/api/attendance/upload-document', formData)
+      .then((r) => r.data)
+  },
+
+  reportAbsence: (data: ReportAbsenceRequest) =>
+    api.post<AbsenceRecordDto>('/api/attendance/report-absence', data).then((r) => r.data),
+
+  /**
+   * Fetches a previously uploaded absence document as a blob and returns an object URL for it.
+   * The download endpoint requires the Bearer token, so a plain `<a href>` can't be used —
+   * the caller must revoke the returned URL (via `URL.revokeObjectURL`) once it's no longer needed.
+   */
+  getDocumentBlobUrl: (documentUrl: string) =>
+    api
+      .get<Blob>(documentUrl, { responseType: 'blob' })
+      .then((r) => URL.createObjectURL(r.data)),
 }

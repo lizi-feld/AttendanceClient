@@ -36,12 +36,12 @@ export function AttendanceHistorySidebar({
   return (
     <aside
       dir="rtl"
-      className={`w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:w-72 ${className}`}
+      className={`w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-sm space-y-4 lg:w-52 ${className}`}
       {...props}
     >
-      <div className="mb-4">
-        <label htmlFor="history-year" className="mb-2 block text-sm font-medium text-gray-700">
-          שנה
+      <div>
+        <label htmlFor="history-year" className="mb-1.5 block text-xs font-medium text-gray-500">
+          בחירת שנה
         </label>
         <select
           id="history-year"
@@ -58,29 +58,21 @@ export function AttendanceHistorySidebar({
       </div>
 
       <div>
-        <p className="mb-3 text-sm font-medium text-gray-700">חודשים</p>
-        <div className="space-y-2">
-          {MONTHS.map((monthName, index) => {
-            const monthNumber = index + 1
-            const isActive = selectedMonth === monthNumber
-
-            return (
-              <button
-                key={monthName}
-                type="button"
-                onClick={() => onMonthChange(monthNumber)}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
-                  isActive
-                    ? 'bg-primary-50 text-primary-700 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                }`}
-              >
-                <span>{monthName}</span>
-                {isActive && <span className="text-primary-600">✓</span>}
-              </button>
-            )
-          })}
-        </div>
+        <label htmlFor="history-month" className="mb-1.5 block text-xs font-medium text-gray-500">
+          בחירת חודש
+        </label>
+        <select
+          id="history-month"
+          value={selectedMonth}
+          onChange={(event) => onMonthChange(Number(event.target.value))}
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+        >
+          {MONTHS.map((monthName, index) => (
+            <option key={monthName} value={index + 1}>
+              {monthName}
+            </option>
+          ))}
+        </select>
       </div>
     </aside>
   )

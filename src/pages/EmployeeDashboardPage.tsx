@@ -2,14 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import {
   LogIn,
   LogOut,
-  Clock,
   CalendarDays,
   Calendar,
   AlertCircle,
   History,
   Settings,
   Plus,
-  Pencil,
+  CalendarPlus,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { attendanceService } from '../services/attendanceService'
@@ -17,12 +16,15 @@ import { Spinner, FullPageSpinner } from '../components/ui/Spinner'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { EditEmployeeModal } from '../components/ui/EditEmployeeModal'
 import { AddManualShiftModal } from '../components/ui/AddManualShiftModal'
+import { ReportAbsenceModal } from '../components/ui/ReportAbsenceModal'
 import { AttendanceHistorySidebar } from '../components/ui/AttendanceHistorySidebar'
+import { AttendanceHistoryTable } from '../components/ui/AttendanceHistoryTable'
 import {
   formatDateFromServer,
   formatTimeFromServer,
   displayDuration,
 } from '../utils/formatters'
+import type { AbsenceTypeValue } from '../utils/attendanceValidation'
 import type {
   AttendanceHistoryMonthDto,
   CurrentAttendanceStatusDto,
@@ -33,6 +35,8 @@ export function EmployeeDashboardPage() {
   const { user, updateCurrentEmployee } = useAuth()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddShiftModal, setShowAddShiftModal] = useState(false)
+  const [showReportAbsenceModal, setShowReportAbsenceModal] = useState(false)
+  const [absencePrefill, setAbsencePrefill] = useState<{ date: string; absenceType: AbsenceTypeValue } | null>(null)
 
   const [status, setStatus] = useState<CurrentAttendanceStatusDto | null>(null)
   const [weeklyHours, setWeeklyHours] = useState<WorkedHoursDto | null>(null)
@@ -123,7 +127,7 @@ export function EmployeeDashboardPage() {
       await attendanceService.clockIn()
       await Promise.all([fetchStatus(), fetchHours(), fetchHistory(selectedYear, selectedMonth)])
     } catch {
-      setActionError('שגיאה בביצוע כניסה למשמרת. אנא נסה שוב.')
+      setActionError('שגיאה בביצוע כניסה . אנא נסה שוב.')
     } finally {
       if (mountedRef.current) setActionLoading(false)
     }
@@ -202,7 +206,7 @@ export function EmployeeDashboardPage() {
         {isClockedIn && status && (
           <div className="flex flex-wrap gap-6 bg-green-50 rounded-xl px-5 py-4 border border-green-100">
             <div>
-              <p className="text-xs text-green-600 font-medium mb-0.5">כניסה למשמרת</p>
+              <p className="text-xs text-green-600 font-medium mb-0.5">כניסה לעבודה</p>
               <p className="text-lg font-semibold text-gray-800 font-mono">
                 {formatTimeFromServer(status.clockInTime)}
               </p>
@@ -212,7 +216,7 @@ export function EmployeeDashboardPage() {
             </div>
             <div className="w-px bg-green-200 self-stretch" />
             <div>
-              <p className="text-xs text-green-600 font-medium mb-0.5">משך המשמרת</p>
+              <p className="text-xs text-green-600 font-medium mb-0.5">משך העבודה</p>
               <p className="text-lg font-semibold text-gray-800 font-mono">
                 {displayDuration(status.currentDuration)}
               </p>
@@ -241,7 +245,7 @@ export function EmployeeDashboardPage() {
             ) : (
               <LogIn className="h-5 w-5" />
             )}
-            כניסה למשמרת
+            כניסה
           </button>
 
           <button
@@ -254,7 +258,7 @@ export function EmployeeDashboardPage() {
             ) : (
               <LogOut className="h-5 w-5" />
             )}
-            יציאה ממשמרת
+            יציאה
           </button>
         </div>
       </div>
@@ -295,6 +299,14 @@ export function EmployeeDashboardPage() {
         onSuccess={() => { void fetchHistory(selectedYear, selectedMonth); void fetchHours() }}
       />
 
+      <ReportAbsenceModal
+        isOpen={showReportAbsenceModal}
+        onClose={() => setShowReportAbsenceModal(false)}
+        initialDate={absencePrefill?.date}
+        initialAbsenceType={absencePrefill?.absenceType}
+        onSuccess={() => { void fetchHistory(selectedYear, selectedMonth); void fetchHours() }}
+      />
+
       {/* ── History table ─────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-6 xl:flex-row">
           <AttendanceHistorySidebar
@@ -309,117 +321,36 @@ export function EmployeeDashboardPage() {
             
             <History className="h-5 w-5 text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-800">היסטוריית נוכחות</h2>
-            <button
-              onClick={() => setShowAddShiftModal(true)}
-              className="mr-auto btn-secondary flex items-center gap-2 text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              הוסף משמרת ידנית
-            </button>
+            <div className="mr-auto flex items-center gap-2">
+              <button
+                onClick={() => { setAbsencePrefill(null); setShowReportAbsenceModal(true) }}
+                className="btn-secondary flex items-center gap-2 text-sm"
+              >
+                <CalendarPlus className="h-4 w-4" />
+                דווח היעדרות
+              </button>
+              <button
+                onClick={() => setShowAddShiftModal(true)}
+                className="btn-secondary flex items-center gap-2 text-sm"
+              >
+                <Plus className="h-4 w-4" />
+                הוסף עדכון
+              </button>
+            </div>
           </div>
 
-          {historyError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {historyError}
-            </div>
-          ) : historyLoading ? (
-            <div className="flex justify-center py-12">
-              <Spinner size="md" />
-            </div>
-          ) : !history || history.days?.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p>אין רשומות נוכחות להצגה</p>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto -mx-6 px-6">
-                <table className="table-base min-w-[980px]">
-                  <thead>
-                    <tr>
-                      <th>תאריך + יום</th>
-                      <th>סוג יום</th>
-                      <th>כניסה</th>
-                      <th>יציאה</th>
-                      <th>סה"כ</th>
-                      <th>פער/עודף</th>
-                      <th>הסבר</th>
-                      <th>פעולות</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.days?.map((day) => {
-                      const rowClassName = day.hasAlert
-                        ? 'border-l-4 border-red-400 bg-red-50/70'
-                        : day.isWeekend
-                          ? 'border-l-4 border-amber-400 bg-amber-50/70'
-                          : 'border-l-4 border-blue-500 bg-white'
-
-                      return (
-                        <tr key={day.date} className={rowClassName}>
-                          <td className="min-w-[220px] py-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className={`h-2.5 w-2.5 rounded-full ${day.hasAttendanceRecord ? 'bg-blue-600' : day.isWeekend ? 'bg-amber-500' : 'bg-slate-300'}`} />
-                              <div>
-                                <div className="font-semibold text-gray-800">{day.displayDateLabel}</div>
-                                <div className="text-xs text-gray-500">{day.dayLabel}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4">
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${day.isWeekend ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}`}>
-                              {day.dayTypeLabel}
-                            </span>
-                          </td>
-                          <td className="py-4 font-mono text-sm">
-                            {day.clockInTime ? formatTimeFromServer(day.clockInTime) : '—'}
-                          </td>
-                          <td className="py-4 font-mono text-sm">
-                            {day.clockOutTime ? formatTimeFromServer(day.clockOutTime) : '—'}
-                          </td>
-                          <td className="py-4 font-mono text-sm">
-                            {day.totalWorkedHours ? displayDuration(day.totalWorkedHours) : '—'}
-                          </td>
-                          <td className="py-4">
-                            <div className={`flex items-center gap-1.5 text-sm ${day.hasDeficit ? 'text-red-600' : 'text-emerald-600'}`}>
-                              {day.hasAlert && <AlertCircle className="h-4 w-4" />}
-                              <span>{day.displayBalance ?? '—'}</span>
-                            </div>
-                            {day.alertText && <div className="mt-1 text-xs text-red-600">{day.alertText}</div>}
-                          </td>
-                          <td className="py-4 max-w-[220px] text-sm text-gray-600">
-                            {day.explanation ?? '—'}
-                          </td>
-                          <td className="py-4 text-left">
-                            <button
-                              type="button"
-                              onClick={() => setShowAddShiftModal(true)}
-                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${day.isWeekend ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
-                            >
-                              {day.isWeekend ? <Plus className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
-                              {day.isWeekend ? 'הוסף דיווח' : 'ערוך'}
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 shadow-inner">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-4">
-                    <span><span className="text-slate-400">סה"כ שעות:</span> {history.summary.totalWorkedHours}</span>
-                    <span><span className="text-slate-400">שעות רגילות:</span> {history.summary.regularHours}</span>
-                    <span><span className="text-slate-400">פער:</span> {history.summary.deficitHours}</span>
-                    <span><span className="text-slate-400">הפסקות:</span> {history.summary.breakHours}</span>
-                  </div>
-                  <span className="text-slate-400">הערות: {history.summary.notesCount}</span>
-                </div>
-              </div>
-            </>
-          )}
+          <AttendanceHistoryTable
+            history={history}
+            loading={historyLoading}
+            error={historyError}
+            emptyMessage="אין רשומות נוכחות להצגה"
+            onRowAction={() => setShowAddShiftModal(true)}
+            onOpenAbsenceModal={(date, absenceType) => {
+              setAbsencePrefill({ date, absenceType })
+              setShowReportAbsenceModal(true)
+            }}
+            onAbsenceReported={() => { void fetchHistory(selectedYear, selectedMonth); void fetchHours() }}
+          />
         </div>
 
       </div>

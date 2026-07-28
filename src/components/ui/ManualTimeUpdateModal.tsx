@@ -80,7 +80,7 @@ export function ManualTimeUpdateModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="עדכון נוכחות ידני">
+    <Modal isOpen={isOpen} onClose={onClose} title="עדכון נוכחות">
       <form onSubmit={(e) => { void handleSubmit(onSubmit)(e) }} noValidate className="space-y-4">
 
         {/* ── Clock-in ──────────────────────────────────────────────────────── */}

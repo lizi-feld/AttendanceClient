@@ -22,7 +22,6 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true, // transmit HttpOnly refresh-token cookie
-  headers: { 'Content-Type': 'application/json' },
 })
 
 // ─── Request interceptor: attach Bearer token ────────────────────────────────

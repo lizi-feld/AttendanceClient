@@ -71,7 +71,7 @@ export function AddManualShiftModal({ isOpen, onClose, onSuccess, targetEmployee
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="הוספת משמרת ידנית">
+    <Modal isOpen={isOpen} onClose={onClose} title="עדכון שעות">
       <form onSubmit={(e) => { void handleSubmit(onSubmit)(e) }} noValidate className="space-y-4">
 
         {/* ── Date ────────────────────────────────────────────────────────── */}
@@ -123,7 +123,7 @@ export function AddManualShiftModal({ isOpen, onClose, onSuccess, targetEmployee
           <textarea
             {...register('note')}
             rows={3}
-            placeholder="תאר את סיבת הוספת המשמרת הידנית..."
+            placeholder="תאר את סיבת הוספת העדכון הידני..."
             className={`${inputCls(Boolean(errors.note))} resize-none`}
           />
           <Hint error={errors.note?.message} hint="חובה · עד 500 תווים" />
@@ -145,7 +145,7 @@ export function AddManualShiftModal({ isOpen, onClose, onSuccess, targetEmployee
             className="btn-primary flex-1"
           >
             {isSubmitting ? <Spinner size="sm" className="text-white" /> : <Plus className="h-4 w-4" />}
-            הוסף משמרת
+            הוסף עדכון
           </button>
           <button
             type="button"

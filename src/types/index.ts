@@ -86,6 +86,10 @@ export interface AttendanceHistoryDayDto {
   alertText: string | null
   displayBalance: string | null
   explanation: string | null
+  /** The AbsenceType enum's name (e.g. "SickLeave"), or null/undefined when no absence was reported for this day. */
+  absenceType?: string | null
+  documentUrl?: string | null
+  note?: string | null
 }
 
 export interface AttendanceHistoryMonthDto {
@@ -112,6 +116,24 @@ export interface TimeResponseDto {
   currentTime: string
   timeZone: string
   source: string
+}
+
+// ─── Absences ────────────────────────────────────────────────────────────────
+
+export interface AbsenceRecordDto {
+  id: number
+  employeeId: number
+  employeeFullName: string
+  date: string // "YYYY-MM-DD" (DateOnly)
+  absenceType: string
+  documentUrl: string | null
+  note: string | null
+  createdAt: string
+}
+
+export interface UploadDocumentResponseDto {
+  url: string
+  fileName: string
 }
 
 // ─── Admin ───────────────────────────────────────────────────────────────────
@@ -163,6 +185,13 @@ export interface ManualAddShiftRequest {
   clockOutTime: string // "HH:mm:ss"   → TimeOnly on the backend
   note: string
   employeeId?: number  // admin endpoint only
+}
+
+export interface ReportAbsenceRequest {
+  date: string          // "YYYY-MM-DD" → DateOnly on the backend
+  absenceType: number   // AbsenceType enum value (Vacation=1 ... Other=7)
+  documentUrl?: string
+  note?: string
 }
 
 // ─── App Auth State ──────────────────────────────────────────────────────────
