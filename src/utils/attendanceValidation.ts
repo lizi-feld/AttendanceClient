@@ -69,6 +69,7 @@ export const documentRequiredTypes: readonly AbsenceTypeValue[] = [
   'SickLeave',
   'ChildSickLeave',
   'Other',
+  'Pregnancy',
 ]
 
 /** Maps the form's string value to the numeric AbsenceType enum value the API expects. */
