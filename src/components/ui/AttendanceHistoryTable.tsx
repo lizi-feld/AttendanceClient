@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, CalendarOff, Clock, Paperclip, Pencil, Plus } from 'lucide-react'
 import { Spinner } from './Spinner'
 import { useToast } from './Toast'
 import { attendanceService } from '../../services/attendanceService'
+import { holidayService } from '../../services/holidayService'
 import {
   absenceTypeOptions,
   absenceTypeToCode,
@@ -10,7 +11,7 @@ import {
   type AbsenceTypeValue,
 } from '../../utils/attendanceValidation'
 import { formatTimeFromServer, displayDuration } from '../../utils/formatters'
-import type { AttendanceHistoryDayDto, AttendanceHistoryMonthDto } from '../../types'
+import type { AttendanceHistoryDayDto, AttendanceHistoryMonthDto, HolidayDto } from '../../types'
 
 interface Props {
   history: AttendanceHistoryMonthDto | null
@@ -77,6 +78,33 @@ export function AttendanceHistoryTable({
   onOpenAbsenceModal,
   onAbsenceReported,
 }: Props) {
+  // Cache-aside on the client too: holidays are fetched once per year and reused across
+  // month changes (and across revisits to a year already fetched this session).
+  const holidayCacheRef = useRef<Map<number, HolidayDto[]>>(new Map())
+  const [yearHolidays, setYearHolidays] = useState<HolidayDto[]>([])
+  const year = history?.year
+
+  useEffect(() => {
+    if (year === undefined) return
+
+    const cached = holidayCacheRef.current.get(year)
+    if (cached) {
+      setYearHolidays(cached)
+      return
+    }
+
+    let cancelled = false
+    holidayService
+      .getByYear(year)
+      .then((items) => {
+        holidayCacheRef.current.set(year, items)
+        if (!cancelled) setYearHolidays(items)
+      })
+      .catch(() => { if (!cancelled) setYearHolidays([]) })
+
+    return () => { cancelled = true }
+  }, [year])
+
   if (error) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -126,6 +154,7 @@ export function AttendanceHistoryTable({
               <DayRow
                 key={day.date}
                 day={day}
+                holidays={yearHolidays}
                 onRowAction={onRowAction}
                 onOpenAbsenceModal={canQuickReportAbsence ? onOpenAbsenceModal : undefined}
                 onAbsenceReported={canQuickReportAbsence ? onAbsenceReported : undefined}
@@ -154,16 +183,23 @@ export function AttendanceHistoryTable({
 
 interface DayRowProps {
   day: AttendanceHistoryDayDto
+  holidays: HolidayDto[]
   onRowAction: () => void
   onOpenAbsenceModal?: (date: string, absenceType: AbsenceTypeValue) => void
   onAbsenceReported?: () => void
 }
 
-function DayRow({ day, onRowAction, onOpenAbsenceModal, onAbsenceReported }: DayRowProps) {
+function DayRow({ day, holidays, onRowAction, onOpenAbsenceModal, onAbsenceReported }: DayRowProps) {
   const [submitting, setSubmitting] = useState(false)
   const toast = useToast()
 
   const isAbsence = Boolean(day.absenceType)
+  // Holiday/Chol HaMoed take priority; Parashat entries are Hebcal-dated to Saturdays only,
+  // so no separate weekend check is needed here.
+  const dateEntries = holidays.filter((h) => h.date === day.date)
+  const calendarLabel =
+    dateEntries.find((h) => h.category === 'holiday' || h.category === 'cholhamoed')?.hebrewName
+    ?? dateEntries.find((h) => h.category === 'parashat')?.hebrewName
   const canQuickReport = Boolean(onOpenAbsenceModal && onAbsenceReported && day.rowType === 'Empty')
 
   const rowClassName = isAbsence
@@ -203,6 +239,9 @@ function DayRow({ day, onRowAction, onOpenAbsenceModal, onAbsenceReported }: Day
       <td className="min-w-[220px] py-2.5">
         <div className="font-semibold text-gray-800">{day.displayDateLabel}</div>
         <div className="text-xs text-gray-500">{day.dayLabel}</div>
+        {calendarLabel && (
+          <div className="mt-0.5 text-xs font-medium text-purple-600">{calendarLabel}</div>
+        )}
       </td>
       <td className="py-2.5">
         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${day.isWeekend ? 'bg-gray-200 text-gray-500' : 'bg-slate-100 text-slate-700'}`}>

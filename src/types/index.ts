@@ -136,6 +136,14 @@ export interface UploadDocumentResponseDto {
   fileName: string
 }
 
+// ─── Holidays ────────────────────────────────────────────────────────────────
+
+export interface HolidayDto {
+  date: string // "YYYY-MM-DD"
+  hebrewName: string
+  category: 'holiday' | 'cholhamoed' | 'parashat' | string
+}
+
 // ─── Admin ───────────────────────────────────────────────────────────────────
 
 export interface DashboardSummaryDto {

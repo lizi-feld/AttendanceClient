@@ -53,7 +53,6 @@ export const attendanceService = {
     api.post<AttendanceRecordDto>('/api/attendance/manual-add', data).then((r) => r.data),
 
   uploadDocument: (file: File) => {
-    debugger
     const formData = new FormData()
     formData.append('file', file)
     // Do not set a Content-Type header here — axios detects FormData and lets the
